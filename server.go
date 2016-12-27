@@ -11,14 +11,14 @@ import (
 )
 
 type agentInfo struct {
-	ReportInterval string              `json:"report_interval"`
+	ReportInterval int                 `json:"report_interval"`
 	PodName        string              `json:"podname"`
 	HostDate       time.Time           `json:"hostdate"`
 	LookupHost     map[string][]string `json:"nslookup"`
 	IPs            map[string][]string `json:"ips"`
 }
 
-var agentCache = make(map[string]*agentInfo)
+var agentCache = make(map[string]agentInfo)
 
 func updateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
 	body := make([]byte, r.ContentLength)
@@ -27,8 +27,8 @@ func updateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params)
 		glog.Errorf("Error while reading request's body. Details: %v", err)
 	}
 
-	agentData := &agentInfo{}
-	err = json.Unmarshal(body, agentData)
+	agentData := agentInfo{}
+	err = json.Unmarshal(body, &agentData)
 	if err != nil {
 		glog.Errorf("Error while unmarshaling request's data. Details: %v", err)
 	}

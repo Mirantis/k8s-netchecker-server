@@ -16,6 +16,10 @@ get-deps:
 	go get github.com/golang/glog
 	go get github.com/julienschmidt/httprouter
 
+.PHONY: test-local
+test-local:
+	go test -v ./...
+
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
