@@ -1,0 +1,10 @@
+FROM golang:1.7-alpine
+
+MAINTAINER Artem Roma <aroma@mirantis.com>
+
+RUN apk add --update bash git
+
+RUN go get github.com/golang/glog
+RUN go get github.com/julienschmidt/httprouter
+
+WORKDIR /go/src/github.com/aateem/mcp-netchecker-server
