@@ -41,7 +41,7 @@ func TestUpdateAgents(t *testing.T) {
 
 	aData, exists := agentCache["test"]
 	if !exists {
-		t.Error("agentCache does not contain key %v after updateAgents method call", "test")
+		t.Errorf("agentCache does not contain key %v after updateAgents method call", "test")
 	}
 	if !reflect.DeepEqual(aData, expectedAgent) {
 		t.Errorf(
