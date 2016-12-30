@@ -43,6 +43,10 @@ func TestUpdateAgents(t *testing.T) {
 	if !exists {
 		t.Errorf("agentCache does not contain key %v after updateAgents method call", "test")
 	}
+
+	lastUpdated := time.Now().String()
+	aData.LastUpdated = lastUpdated
+	expectedAgent.LastUpdated = lastUpdated
 	if !reflect.DeepEqual(aData, expectedAgent) {
 		t.Errorf(
 			"Actual data from agentCache %v is not as expected %v",

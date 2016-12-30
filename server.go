@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"net/http"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
@@ -13,6 +14,7 @@ type agentInfo struct {
 	ReportInterval int                 `json:"report_interval"`
 	PodName        string              `json:"podname"`
 	HostDate       string              `json:"hostdate"`
+	LastUpdated    string              `json:"last_updated"`
 	LookupHost     map[string][]string `json:"nslookup"`
 	IPs            map[string][]string `json:"ips"`
 }
@@ -31,6 +33,8 @@ func updateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params)
 	if err != nil {
 		glog.Errorf("Error while unmarshaling request's data. Details: %v", err)
 	}
+	agentData.LastUpdated = time.Now().String()
+	glog.V(10).Infof("Updating the agents cache with value: %v", agentData)
 	agentCache[rp.ByName("name")] = agentData
 }
 
@@ -47,6 +51,7 @@ func getAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
 }
 
 func setupRouter() *httprouter.Router {
+	glog.V(10).Info("Setting up the url multiplexer")
 	router := httprouter.New()
 	router.POST("/api/v1/agents/:name", updateAgents)
 	router.GET("/api/v1/agents/", getAgents)
