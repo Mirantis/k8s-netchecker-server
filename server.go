@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"net/http"
-	"time"
 
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
@@ -13,7 +12,7 @@ import (
 type agentInfo struct {
 	ReportInterval int                 `json:"report_interval"`
 	PodName        string              `json:"podname"`
-	HostDate       time.Time           `json:"hostdate"`
+	HostDate       string              `json:"hostdate"`
 	LookupHost     map[string][]string `json:"nslookup"`
 	IPs            map[string][]string `json:"ips"`
 }

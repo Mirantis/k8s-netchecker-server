@@ -17,7 +17,7 @@ func agentExample() agentInfo {
 	return agentInfo{
 		ReportInterval: 5,
 		PodName:        "test",
-		HostDate:       time.Now(),
+		HostDate:       time.Now().String(),
 	}
 }
 
