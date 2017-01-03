@@ -18,6 +18,7 @@ rebuild-local: clean build-local
 get-deps:
 	go get github.com/golang/glog
 	go get github.com/julienschmidt/httprouter
+	go get k8s.io/client-go
 
 .PHONY: test-local
 test-local:
