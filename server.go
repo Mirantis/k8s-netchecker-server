@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"http"
 	"net/http"
 	"time"
 
@@ -19,7 +18,8 @@ import (
 )
 
 const AgentLabelKey = "app"
-const AgentLabelValues = []string{"netchecker-agent", "netchecker-agent-hostnet"}
+
+var AgentLabelValues = []string{"netchecker-agent", "netchecker-agent-hostnet"}
 
 type agentInfo struct {
 	ReportInterval int                 `json:"report_interval"`
@@ -67,7 +67,7 @@ func getAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 }
 
-func checkAgentsData(pods v1.PodList) ([]string, []string) {
+func checkAgentsData(pods *v1.PodList) ([]string, []string) {
 	absent := []string{}
 	outdated := []string{}
 
@@ -80,7 +80,7 @@ func checkAgentsData(pods v1.PodList) ([]string, []string) {
 		}
 
 		delta := time.Now().Sub(agentData.LastUpdated).Seconds()
-		if delta > agentData.ReportInterval.(float64) {
+		if delta > float64(agentData.ReportInterval) {
 			outdated = append(outdated, agentName)
 		}
 	}
@@ -94,7 +94,7 @@ func kubePods(kcs kubernetes.Interface) (*v1.PodList, error) {
 	if err != nil {
 		return nil, err
 	}
-	selector.Add(requirement)
+	selector.Add(*requirement)
 
 	glog.V(10).Infof("Selector for kubernetes pods: %v", selector.String())
 
@@ -145,7 +145,7 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 	}
 }
 
-func kubeClientSet() (kubernetes.Clientset, error) {
+func kubeClientSet() (kubernetes.Interface, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -185,5 +185,5 @@ func main() {
 		glog.Errorf("Error while setting up the http router")
 		panic(err.Error())
 	}
-	http.ListenAndServe(endpoint, setupRouter())
+	http.ListenAndServe(endpoint, router)
 }

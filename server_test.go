@@ -17,7 +17,7 @@ func agentExample() agentInfo {
 	return agentInfo{
 		ReportInterval: 5,
 		PodName:        "test",
-		HostDate:       time.Now().String(),
+		HostDate:       time.Now(),
 	}
 }
 
@@ -27,7 +27,7 @@ func TestUpdateAgents(t *testing.T) {
 
 	marshalled, err := json.Marshal(expectedAgent)
 	if err != nil {
-		t.Errorf("Error while marshalling expected data. Details: %v", err)
+		t.Errorf("Fail to marshal expectedAgent. Details: %v", err)
 	}
 
 	rw := httptest.NewRecorder()
@@ -44,10 +44,20 @@ func TestUpdateAgents(t *testing.T) {
 		t.Errorf("agentCache does not contain key %v after updateAgents method call", "test")
 	}
 
-	lastUpdated := time.Now().String()
-	aData.LastUpdated = lastUpdated
-	expectedAgent.LastUpdated = lastUpdated
-	if !reflect.DeepEqual(aData, expectedAgent) {
+	//we do not controll value of last_updated
+	expectedAgent.LastUpdated = aData.LastUpdated
+
+	expected, err := json.Marshal(expectedAgent)
+	if err != nil {
+		t.Errorf("Fail to marshal expected data with last_updated field. Details: %v", err)
+	}
+
+	actual, err := json.Marshal(aData)
+	if err != nil {
+		t.Errorf("Fail to marshal agent from the cache. Details: %v", err)
+	}
+
+	if bytes.Equal(expected, actual) {
 		t.Errorf(
 			"Actual data from agentCache %v is not as expected %v",
 			agentCache["test"],
