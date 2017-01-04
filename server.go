@@ -30,6 +30,12 @@ type agentInfo struct {
 	IPs            map[string][]string `json:"ips"`
 }
 
+type CheckConnectivityInfo struct {
+	Message  string   `json="message"`
+	Absent   []string `json="outdated,omitempty"`
+	Outdated []string `json="absent,omitempty"`
+}
+
 var agentCache = make(map[string]agentInfo)
 
 func updateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
@@ -82,36 +88,47 @@ func checkAgentsData(pods v1.PodList) ([]string, []string) {
 	return absent, outdated
 }
 
+func kubePods(kcs kubernetes.Interface) (*v1.PodList, error) {
+	selector := labels.NewSelector()
+	requirement, err := labels.NewRequirement(AgentLabelKey, selection.In, AgentLabelValues)
+	if err != nil {
+		return nil, err
+	}
+	selector.Add(requirement)
+
+	glog.V(10).Infof("Selector for kubernetes pods: %v", selector.String())
+
+	pods, err := kcs.Core().Pods("").List(v1.ListOptions{LabelSelector: selector.String()})
+	return pods, err
+}
+
 func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 	return func(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		selector := labels.NewSelector()
-		requirement, err := labels.NewRequirement(AgentLabelKey, selection.In, AgentLabelValues)
-		if err != nil {
-			glog.Errorf("Error while creating requirement for the agent's pods' labels. Details: %v", err)
-		}
-		selector.Add(requirement)
+		pods, err := kubePods(kcs)
 
-		pods, err := kcs.Core().Pods("").List(v1.ListOptions{LabelSelector: selector.String()})
+		res := &CheckConnectivityInfo{}
+		errMsg := "Connectivity check fails. Reason: %v"
+		status := http.StatusOK
+
 		if err != nil {
-			glog.Errorf("Fail to get list of the agent's pods. Details: %v", err)
+			message := fmt.Sprintf(
+				"failed to retrieve pods from kubernetes; details: %v", err.Error())
+			glog.Error(message)
+			res = &CheckConnectivityInfo{Message: fmt.Sprintf(errMsg, message)}
+			status = http.StatusBadRequest
 		}
 
 		absent, outdated := checkAgentsData(pods)
-
-		type result struct {
-			Message  string   `json="message"`
-			Absent   []string `json="outdated,omitempty"`
-			Outdated []string `json="absent,omitempty"`
-		}
-
-		res := &result{}
 		if len(absent) != 0 || len(outdated) != 0 {
-			res.Message = "Connectivity check fails. Inspect the payload for details"
+			res.Message = fmt.Sprintf(errMsg,
+				"there is absent or outdated pods; look up the payload")
 			res.Absent = absent
 			res.Outdated = outdated
 
-			rw.WriteHeader(http.StatusBadRequest)
-		} else {
+			status = http.StatusBadRequest
+		}
+
+		if status == http.StatusOK {
 			res.Message = fmt.Sprintf(
 				"All %v pods successfully reported back to the server", len(agentCache))
 		}
