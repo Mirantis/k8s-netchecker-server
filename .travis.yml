@@ -4,3 +4,7 @@ go:
 before_install: curl https://glide.sh/get | sh
 install: make get-deps
 script: make test-local
+addon:
+    apt:
+        packages:
+            - curl
