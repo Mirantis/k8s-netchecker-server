@@ -1,0 +1,11 @@
+package: github.com/Mirantis/k8s-netchecker-server
+import:
+- package: github.com/golang/glog
+- package: github.com/julienschmidt/httprouter
+- package: k8s.io/client-go
+  subpackages:
+  - kubernetes
+  - pkg/api/v1
+  - pkg/labels
+  - pkg/selection
+  - rest

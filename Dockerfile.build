@@ -7,4 +7,4 @@ RUN apk add --update bash git
 RUN go get github.com/golang/glog
 RUN go get github.com/julienschmidt/httprouter
 
-WORKDIR /go/src/github.com/aateem/mcp-netchecker-server
+WORKDIR /go/src/github.com/Mirantis/k8s-netchecker-server

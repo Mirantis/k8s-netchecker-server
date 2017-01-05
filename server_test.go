@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 	"time"
 
@@ -44,7 +43,7 @@ func TestUpdateAgents(t *testing.T) {
 		t.Errorf("agentCache does not contain key %v after updateAgents method call", "test")
 	}
 
-	//we do not controll value of last_updated
+	//time.Now() is always different
 	expectedAgent.LastUpdated = aData.LastUpdated
 
 	expected, err := json.Marshal(expectedAgent)
@@ -57,7 +56,7 @@ func TestUpdateAgents(t *testing.T) {
 		t.Errorf("Fail to marshal agent from the cache. Details: %v", err)
 	}
 
-	if bytes.Equal(expected, actual) {
+	if !bytes.Equal(expected, actual) {
 		t.Errorf(
 			"Actual data from agentCache %v is not as expected %v",
 			agentCache["test"],
@@ -70,6 +69,11 @@ func TestGetAgents(t *testing.T) {
 	cleanAgentCache()
 	agentCache["test"] = agentExample()
 
+	expected, err := json.Marshal(agentCache)
+	if err != nil {
+		t.Errorf("Fail to marshal agentCache (making expected byte array). Details: %v", err)
+	}
+
 	rw := httptest.NewRecorder()
 	r := httptest.NewRequest(
 		"GET",
@@ -78,14 +82,8 @@ func TestGetAgents(t *testing.T) {
 
 	getAgents(rw, r, httprouter.Params{})
 
-	actual := make(map[string]agentInfo)
-	err := json.Unmarshal(rw.Body.Bytes(), &actual)
-	if err != nil {
-		t.Errorf("Error while unmarshalling response body. Details %v", err)
-	}
-
-	if !reflect.DeepEqual(actual, agentCache) {
-		t.Errorf("Response data %v is not as expected %v", actual, agentCache)
+	if !bytes.Equal(expected, rw.Body.Bytes()) {
+		t.Error("Response body for GET agents is not as expected")
 	}
 
 	cleanAgentCache()
