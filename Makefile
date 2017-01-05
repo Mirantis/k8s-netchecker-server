@@ -16,7 +16,7 @@ rebuild-local: clean build-local
 
 .PHONY: get-deps
 get-deps:
-	glide install
+	glide install --strip-vendor
 
 .PHONY: test-local
 test-local:
