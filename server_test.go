@@ -3,11 +3,16 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 func cleanAgentCache() { agentCache = make(map[string]agentInfo) }
@@ -84,6 +89,120 @@ func TestGetAgents(t *testing.T) {
 
 	if !bytes.Equal(expected, rw.Body.Bytes()) {
 		t.Error("Response body for GET agents is not as expected")
+	}
+
+	cleanAgentCache()
+}
+
+func CSwithPods() kubernetes.Interface {
+	return fake.NewSimpleClientset(
+		&v1.Pod{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "agent-pod",
+				Labels:    map[string]string{"app": AgentLabelValues[0]},
+				Namespace: v1.NamespaceDefault,
+			},
+		},
+		&v1.Pod{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "agent-pod-hostnet",
+				Labels:    map[string]string{"app": AgentLabelValues[0]},
+				Namespace: v1.NamespaceDefault,
+			},
+		})
+}
+
+func TestConnectivityCheckSuccess(t *testing.T) {
+	cleanAgentCache()
+
+	agent := agentExample()
+	agent.LastUpdated = agent.HostDate
+
+	agent.PodName = "agent-pod"
+	agentCache[agent.PodName] = agent
+
+	agent.PodName = "agent-pod-hostnet"
+	agentCache[agent.PodName] = agent
+
+	clientSet := CSwithPods()
+
+	rw := httptest.NewRecorder()
+	r := httptest.NewRequest(
+		"GET",
+		"http://example.com/api/v1/connectivity_check",
+		nil)
+
+	connectivityCheck(clientSet)(rw, r, httprouter.Params{})
+
+	if rw.Code != http.StatusOK {
+		t.Errorf(
+			"Status code of connectivity check response must be OK instead it is %v",
+			rw.Code)
+	}
+
+	result := &CheckConnectivityInfo{}
+	err := json.Unmarshal(rw.Body.Bytes(), result)
+	if err != nil {
+		t.Errorf(
+			"Fail to unmarshal connectivity check successfull response body. Details: %v",
+			err)
+	}
+
+	successfullMsg := fmt.Sprintf(
+		"All %v pods successfully reported back to the server", len(agentCache))
+	if result.Message != successfullMsg {
+		t.Errorf(
+			"Unexpected message from successfull result payload. Actual: %v",
+			result.Message)
+	}
+
+	cleanAgentCache()
+}
+
+func TestConnectivityCheckFail(t *testing.T) {
+	cleanAgentCache()
+	agent := agentExample()
+
+	agent.PodName = "agent-pod-hostnet"
+	//back to the past
+	agent.LastUpdated = agent.HostDate.Add(
+		-time.Second * time.Duration(agent.ReportInterval+1))
+	agentCache[agent.PodName] = agent
+
+	clientSet := CSwithPods()
+
+	rw := httptest.NewRecorder()
+	r := httptest.NewRequest(
+		"GET",
+		"http://example.com/api/v1/connectivity_check",
+		nil)
+
+	handleFunc := connectivityCheck(clientSet)
+	handleFunc(rw, r, httprouter.Params{})
+
+	result := &CheckConnectivityInfo{}
+	err := json.Unmarshal(rw.Body.Bytes(), result)
+	if err != nil {
+		t.Errorf(
+			"Fail to unmarshal connectivity check failed response body. Details: %v",
+			err)
+	}
+
+	failMsg := fmt.Sprintf(
+		"Connectivity check fails. Reason: %v",
+		"there is absent or outdated pods; look up the payload")
+
+	if result.Message != failMsg {
+		t.Errorf(
+			"Unexpected message from bad request result payload. Actual: %v",
+			result.Message)
+	}
+
+	if result.Outdated[0] != "agent-pod-hostnet" {
+		t.Errorf("agent-pod-hostnet must be returned in the payload in the 'outdated' array")
+	}
+	if result.Absent[0] != "agent-pod" {
+		t.Errorf("agent-pod must be returned in the payload in the 'absent' array")
 	}
 
 	cleanAgentCache()

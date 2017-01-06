@@ -142,6 +142,8 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 		if err != nil {
 			glog.Errorf("Writing response body failed. Details: %v", err)
 		}
+
+		rw.WriteHeader(status)
 	}
 }
 
