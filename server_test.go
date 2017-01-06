@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -27,6 +28,7 @@ func agentExample() agentInfo {
 
 func TestUpdateAgents(t *testing.T) {
 	cleanAgentCache()
+	defer cleanAgentCache()
 	expectedAgent := agentExample()
 
 	marshalled, err := json.Marshal(expectedAgent)
@@ -67,11 +69,11 @@ func TestUpdateAgents(t *testing.T) {
 			agentCache["test"],
 			expectedAgent)
 	}
-	cleanAgentCache()
 }
 
 func TestGetAgents(t *testing.T) {
 	cleanAgentCache()
+	defer cleanAgentCache()
 	agentCache["test"] = agentExample()
 
 	expected, err := json.Marshal(agentCache)
@@ -90,8 +92,6 @@ func TestGetAgents(t *testing.T) {
 	if !bytes.Equal(expected, rw.Body.Bytes()) {
 		t.Error("Response body for GET agents is not as expected")
 	}
-
-	cleanAgentCache()
 }
 
 func CSwithPods() kubernetes.Interface {
@@ -114,6 +114,7 @@ func CSwithPods() kubernetes.Interface {
 
 func TestConnectivityCheckSuccess(t *testing.T) {
 	cleanAgentCache()
+	defer cleanAgentCache()
 
 	agent := agentExample()
 	agent.LastUpdated = agent.HostDate
@@ -155,12 +156,12 @@ func TestConnectivityCheckSuccess(t *testing.T) {
 			"Unexpected message from successfull result payload. Actual: %v",
 			result.Message)
 	}
-
-	cleanAgentCache()
 }
 
 func TestConnectivityCheckFail(t *testing.T) {
 	cleanAgentCache()
+	defer cleanAgentCache()
+
 	agent := agentExample()
 
 	agent.PodName = "agent-pod-hostnet"
@@ -190,7 +191,7 @@ func TestConnectivityCheckFail(t *testing.T) {
 
 	failMsg := fmt.Sprintf(
 		"Connectivity check fails. Reason: %v",
-		"there is absent or outdated pods; look up the payload")
+		"there are absent or outdated pods; look up the payload")
 
 	if result.Message != failMsg {
 		t.Errorf(
@@ -204,6 +205,4 @@ func TestConnectivityCheckFail(t *testing.T) {
 	if result.Absent[0] != "agent-pod" {
 		t.Errorf("agent-pod must be returned in the payload in the 'absent' array")
 	}
-
-	cleanAgentCache()
 }

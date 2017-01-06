@@ -11,15 +11,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/labels"
-	"k8s.io/client-go/pkg/selection"
-	"k8s.io/client-go/rest"
 )
-
-const AgentLabelKey = "app"
-
-var AgentLabelValues = []string{"netchecker-agent", "netchecker-agent-hostnet"}
 
 type agentInfo struct {
 	ReportInterval int                 `json:"report_interval"`
@@ -67,41 +59,6 @@ func getAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 }
 
-func checkAgentsData(pods *v1.PodList) ([]string, []string) {
-	absent := []string{}
-	outdated := []string{}
-
-	for _, pod := range pods.Items {
-		agentName := pod.ObjectMeta.Name
-		agentData, exists := agentCache[agentName]
-		if !exists {
-			absent = append(absent, agentName)
-			continue
-		}
-
-		delta := time.Now().Sub(agentData.LastUpdated).Seconds()
-		if delta > float64(agentData.ReportInterval) {
-			outdated = append(outdated, agentName)
-		}
-	}
-
-	return absent, outdated
-}
-
-func kubePods(kcs kubernetes.Interface) (*v1.PodList, error) {
-	selector := labels.NewSelector()
-	requirement, err := labels.NewRequirement(AgentLabelKey, selection.In, AgentLabelValues)
-	if err != nil {
-		return nil, err
-	}
-	selector.Add(*requirement)
-
-	glog.V(10).Infof("Selector for kubernetes pods: %v", selector.String())
-
-	pods, err := kcs.Core().Pods("").List(v1.ListOptions{LabelSelector: selector.String()})
-	return pods, err
-}
-
 func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 	return func(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		pods, err := kubePods(kcs)
@@ -118,10 +75,14 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 			status = http.StatusBadRequest
 		}
 
-		absent, outdated := checkAgentsData(pods)
+		absent, outdated := checkKubeDataAgainstCache(pods)
 		if len(absent) != 0 || len(outdated) != 0 {
+			glog.V(5).Infof(
+				"Absent|outdated agents detected. Absent -> %v; outdated -> %v",
+				absent, outdated,
+			)
 			res.Message = fmt.Sprintf(errMsg,
-				"there is absent or outdated pods; look up the payload")
+				"there are absent or outdated pods; look up the payload")
 			res.Absent = absent
 			res.Outdated = outdated
 
@@ -129,8 +90,10 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 		}
 
 		if status == http.StatusOK {
-			res.Message = fmt.Sprintf(
+			message := fmt.Sprintf(
 				"All %v pods successfully reported back to the server", len(agentCache))
+			glog.V(10).Info(message)
+			res.Message = message
 		}
 
 		body, err := json.Marshal(res)
@@ -147,33 +110,13 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 	}
 }
 
-func kubeClientSet() (kubernetes.Interface, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	clientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientSet, nil
-}
-
-func setupRouter() (*httprouter.Router, error) {
+func setupRouter(kcs kubernetes.Interface) *httprouter.Router {
 	glog.V(10).Info("Setting up the url multiplexer")
 	router := httprouter.New()
 	router.POST("/api/v1/agents/:name", updateAgents)
 	router.GET("/api/v1/agents/", getAgents)
-
-	clientSet, err := kubeClientSet()
-	if err != nil {
-		return nil, err
-	}
-	router.GET("/api/v1/connectivity_check", connectivityCheck(clientSet))
-
-	return router, nil
+	router.GET("/api/v1/connectivity_check", connectivityCheck(kcs))
+	return router
 }
 
 func main() {
@@ -182,10 +125,13 @@ func main() {
 	flag.Parse()
 
 	glog.V(5).Infof("Start listening on %v", endpoint)
-	router, err := setupRouter()
+
+	clientSet, err := kubeClientSet()
 	if err != nil {
-		glog.Errorf("Error while setting up the http router")
+		glog.Errorf("Error while creating k8s client set. Details: %v", err)
 		panic(err.Error())
 	}
+
+	router := setupRouter(clientSet)
 	http.ListenAndServe(endpoint, router)
 }
