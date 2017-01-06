@@ -61,17 +61,20 @@ func getAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 	return func(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		pods, err := kubePods(kcs)
-
-		res := &CheckConnectivityInfo{}
-		errMsg := "Connectivity check fails. Reason: %v"
+		res := &CheckConnectivityInfo{
+			Message: fmt.Sprintf(
+				"All %v pods successfully reported back to the server",
+				len(agentCache)),
+		}
 		status := http.StatusOK
+		errMsg := "Connectivity check fails. Reason: %v"
 
+		pods, err := kubePods(kcs)
 		if err != nil {
 			message := fmt.Sprintf(
 				"failed to retrieve pods from kubernetes; details: %v", err.Error())
 			glog.Error(message)
-			res = &CheckConnectivityInfo{Message: fmt.Sprintf(errMsg, message)}
+			res.Message = fmt.Sprintf(errMsg, message)
 			status = http.StatusBadRequest
 		}
 
@@ -89,12 +92,10 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 			status = http.StatusBadRequest
 		}
 
-		if status == http.StatusOK {
-			message := fmt.Sprintf(
-				"All %v pods successfully reported back to the server", len(agentCache))
-			glog.V(10).Info(message)
-			res.Message = message
-		}
+		glog.V(10).Infof("Connectivity check result: %v", res)
+		glog.V(10).Infof("Connectivity check HTTP response status code: %v", status)
+
+		rw.WriteHeader(status)
 
 		body, err := json.Marshal(res)
 		if err != nil {
@@ -105,8 +106,6 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 		if err != nil {
 			glog.Errorf("Writing response body failed. Details: %v", err)
 		}
-
-		rw.WriteHeader(status)
 	}
 }
 

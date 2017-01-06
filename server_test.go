@@ -29,21 +29,27 @@ func agentExample() agentInfo {
 func TestUpdateAgents(t *testing.T) {
 	cleanAgentCache()
 	defer cleanAgentCache()
-	expectedAgent := agentExample()
 
+	expectedAgent := agentExample()
 	marshalled, err := json.Marshal(expectedAgent)
 	if err != nil {
-		t.Errorf("Fail to marshal expectedAgent. Details: %v", err)
+		t.Errorf("Failed to marshal expectedAgent. Details: %v", err)
 	}
 
-	rw := httptest.NewRecorder()
-	r := httptest.NewRequest(
-		"POST",
-		"http://example.com/api/v1/agents/test",
-		bytes.NewReader(marshalled))
-	rp := httprouter.Params{httprouter.Param{Key: "name", Value: "test"}}
+	router := httprouter.New()
+	router.POST("/api/v1/agents/:name", updateAgents)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
 
-	updateAgents(rw, r, rp)
+	body := bytes.NewReader(marshalled)
+	_, err = http.Post(
+		ts.URL+"/api/v1/agents/"+expectedAgent.PodName,
+		"application/json",
+		body,
+	)
+	if err != nil {
+		t.Errorf("Failed to post example agent to server. Details: %v", err)
+	}
 
 	aData, exists := agentCache["test"]
 	if !exists {
@@ -55,12 +61,12 @@ func TestUpdateAgents(t *testing.T) {
 
 	expected, err := json.Marshal(expectedAgent)
 	if err != nil {
-		t.Errorf("Fail to marshal expected data with last_updated field. Details: %v", err)
+		t.Errorf("Failed to marshal expected data with last_updated field. Details: %v", err)
 	}
 
 	actual, err := json.Marshal(aData)
 	if err != nil {
-		t.Errorf("Fail to marshal agent from the cache. Details: %v", err)
+		t.Errorf("Failed to marshal agent from the cache. Details: %v", err)
 	}
 
 	if !bytes.Equal(expected, actual) {
@@ -74,22 +80,30 @@ func TestUpdateAgents(t *testing.T) {
 func TestGetAgents(t *testing.T) {
 	cleanAgentCache()
 	defer cleanAgentCache()
-	agentCache["test"] = agentExample()
 
+	agentCache["test"] = agentExample()
 	expected, err := json.Marshal(agentCache)
 	if err != nil {
-		t.Errorf("Fail to marshal agentCache (making expected byte array). Details: %v", err)
+		t.Errorf("Failed to marshal agentCache (making expected byte array). Details: %v", err)
 	}
 
-	rw := httptest.NewRecorder()
-	r := httptest.NewRequest(
-		"GET",
-		"http://example.com/api/v1/agents/test",
-		nil)
+	router := httprouter.New()
+	router.GET("/api/v1/agents/", getAgents)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
 
-	getAgents(rw, r, httprouter.Params{})
+	res, err := http.Get(ts.URL + "/api/v1/agents/")
+	if err != nil {
+		t.Errorf("Failed to GET agents' data from server. Details: %v", err)
+	}
 
-	if !bytes.Equal(expected, rw.Body.Bytes()) {
+	actual := make([]byte, res.ContentLength)
+	n, err := res.Body.Read(actual)
+	if n <= 0 && err != nil {
+		t.Errorf("Failed to read response body of GET agents: Details: %v", err)
+	}
+
+	if !bytes.Equal(expected, actual) {
 		t.Error("Response body for GET agents is not as expected")
 	}
 }
@@ -127,34 +141,37 @@ func TestConnectivityCheckSuccess(t *testing.T) {
 
 	clientSet := CSwithPods()
 
-	rw := httptest.NewRecorder()
-	r := httptest.NewRequest(
-		"GET",
-		"http://example.com/api/v1/connectivity_check",
-		nil)
+	router := httprouter.New()
+	router.GET("/api/v1/connectivity_check", connectivityCheck(clientSet))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
 
-	connectivityCheck(clientSet)(rw, r, httprouter.Params{})
-
-	if rw.Code != http.StatusOK {
-		t.Errorf(
-			"Status code of connectivity check response must be OK instead it is %v",
-			rw.Code)
+	res, err := http.Get(ts.URL + "/api/v1/connectivity_check")
+	if err != nil {
+		t.Errorf("Failed to GET successfull connectivity check from server. Details: %v", err)
 	}
 
-	result := &CheckConnectivityInfo{}
-	err := json.Unmarshal(rw.Body.Bytes(), result)
+	if res.StatusCode != http.StatusOK {
+		t.Errorf(
+			"Status code of connectivity check response must be OK instead it is %v",
+			res.StatusCode)
+	}
+
+	actual := &CheckConnectivityInfo{}
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(actual)
 	if err != nil {
 		t.Errorf(
-			"Fail to unmarshal connectivity check successfull response body. Details: %v",
+			"Failed to decode connectivity check successfull response body. Details: %v",
 			err)
 	}
 
 	successfullMsg := fmt.Sprintf(
 		"All %v pods successfully reported back to the server", len(agentCache))
-	if result.Message != successfullMsg {
+	if actual.Message != successfullMsg {
 		t.Errorf(
 			"Unexpected message from successfull result payload. Actual: %v",
-			result.Message)
+			actual.Message)
 	}
 }
 
@@ -172,20 +189,29 @@ func TestConnectivityCheckFail(t *testing.T) {
 
 	clientSet := CSwithPods()
 
-	rw := httptest.NewRecorder()
-	r := httptest.NewRequest(
-		"GET",
-		"http://example.com/api/v1/connectivity_check",
-		nil)
+	router := httprouter.New()
+	router.GET("/api/v1/connectivity_check", connectivityCheck(clientSet))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
 
-	handleFunc := connectivityCheck(clientSet)
-	handleFunc(rw, r, httprouter.Params{})
+	res, err := http.Get(ts.URL + "/api/v1/connectivity_check")
+	if err != nil {
+		t.Errorf("connectivity check from server. Details: %v", err)
+	}
 
-	result := &CheckConnectivityInfo{}
-	err := json.Unmarshal(rw.Body.Bytes(), result)
+	if res.StatusCode != http.StatusBadRequest {
+		t.Errorf(
+			"Check connectivity response code must be BadRequest, instead: %v",
+			res.StatusCode)
+	}
+
+	actual := &CheckConnectivityInfo{}
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(actual)
+
 	if err != nil {
 		t.Errorf(
-			"Fail to unmarshal connectivity check failed response body. Details: %v",
+			"Failed to decode connectivity check response body. Details: %v",
 			err)
 	}
 
@@ -193,16 +219,16 @@ func TestConnectivityCheckFail(t *testing.T) {
 		"Connectivity check fails. Reason: %v",
 		"there are absent or outdated pods; look up the payload")
 
-	if result.Message != failMsg {
+	if actual.Message != failMsg {
 		t.Errorf(
 			"Unexpected message from bad request result payload. Actual: %v",
-			result.Message)
+			actual.Message)
 	}
 
-	if result.Outdated[0] != "agent-pod-hostnet" {
+	if actual.Outdated[0] != "agent-pod-hostnet" {
 		t.Errorf("agent-pod-hostnet must be returned in the payload in the 'outdated' array")
 	}
-	if result.Absent[0] != "agent-pod" {
+	if actual.Absent[0] != "agent-pod" {
 		t.Errorf("agent-pod must be returned in the payload in the 'absent' array")
 	}
 }
