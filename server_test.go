@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -126,6 +127,41 @@ func CSwithPods() kubernetes.Interface {
 		})
 }
 
+func createAgentChecker() *AgentChecker {
+	return &AgentChecker{KubeProxy: &KubeProxy{Client: CSwithPods()}}
+}
+
+func createCnntyCheckTestServer(checker Checker) *httptest.Server {
+	router := httprouter.New()
+	router.GET("/api/v1/connectivity_check", connectivityCheck(checker))
+	return httptest.NewServer(router)
+}
+
+func cnntyRespOrFail(serverURL string, expectedStatus int, t *testing.T) *http.Response {
+	res, err := http.Get(serverURL + "/api/v1/connectivity_check")
+	if err != nil {
+		t.Errorf("Failed to GET successfull connectivity check from server. Details: %v", err)
+	}
+	if res.StatusCode != expectedStatus {
+		t.Errorf(
+			"Status code of connectivity check response must be %v instead it is %v",
+			expectedStatus, res.StatusCode)
+	}
+	return res
+}
+
+func decodeCnntyRespOrFail(resp *http.Response, t *testing.T) *CheckConnectivityInfo {
+	info := &CheckConnectivityInfo{}
+	decoder := json.NewDecoder(resp.Body)
+	err := decoder.Decode(info)
+	if err != nil {
+		t.Errorf(
+			"Failed to decode connectivity check successfull response body. Details: %v",
+			err)
+	}
+	return info
+}
+
 func TestConnectivityCheckSuccess(t *testing.T) {
 	cleanAgentCache()
 	defer cleanAgentCache()
@@ -139,33 +175,11 @@ func TestConnectivityCheckSuccess(t *testing.T) {
 	agent.PodName = "agent-pod-hostnet"
 	agentCache[agent.PodName] = agent
 
-	clientSet := CSwithPods()
-
-	router := httprouter.New()
-	router.GET("/api/v1/connectivity_check", connectivityCheck(clientSet))
-	ts := httptest.NewServer(router)
+	aChecker := createAgentChecker()
+	ts := createCnntyCheckTestServer(aChecker)
 	defer ts.Close()
 
-	res, err := http.Get(ts.URL + "/api/v1/connectivity_check")
-	if err != nil {
-		t.Errorf("Failed to GET successfull connectivity check from server. Details: %v", err)
-	}
-
-	if res.StatusCode != http.StatusOK {
-		t.Errorf(
-			"Status code of connectivity check response must be OK instead it is %v",
-			res.StatusCode)
-	}
-
-	actual := &CheckConnectivityInfo{}
-	decoder := json.NewDecoder(res.Body)
-	err = decoder.Decode(actual)
-	if err != nil {
-		t.Errorf(
-			"Failed to decode connectivity check successfull response body. Details: %v",
-			err)
-	}
-
+	actual := decodeCnntyRespOrFail(cnntyRespOrFail(ts.URL, http.StatusOK, t), t)
 	successfullMsg := fmt.Sprintf(
 		"All %v pods successfully reported back to the server", len(agentCache))
 	if actual.Message != successfullMsg {
@@ -187,34 +201,11 @@ func TestConnectivityCheckFail(t *testing.T) {
 		-time.Second * time.Duration(agent.ReportInterval+1))
 	agentCache[agent.PodName] = agent
 
-	clientSet := CSwithPods()
-
-	router := httprouter.New()
-	router.GET("/api/v1/connectivity_check", connectivityCheck(clientSet))
-	ts := httptest.NewServer(router)
+	aChecker := createAgentChecker()
+	ts := createCnntyCheckTestServer(aChecker)
 	defer ts.Close()
 
-	res, err := http.Get(ts.URL + "/api/v1/connectivity_check")
-	if err != nil {
-		t.Errorf("connectivity check from server. Details: %v", err)
-	}
-
-	if res.StatusCode != http.StatusBadRequest {
-		t.Errorf(
-			"Check connectivity response code must be BadRequest, instead: %v",
-			res.StatusCode)
-	}
-
-	actual := &CheckConnectivityInfo{}
-	decoder := json.NewDecoder(res.Body)
-	err = decoder.Decode(actual)
-
-	if err != nil {
-		t.Errorf(
-			"Failed to decode connectivity check response body. Details: %v",
-			err)
-	}
-
+	actual := decodeCnntyRespOrFail(cnntyRespOrFail(ts.URL, http.StatusBadRequest, t), t)
 	failMsg := fmt.Sprintf(
 		"Connectivity check fails. Reason: %v",
 		"there are absent or outdated pods; look up the payload")
@@ -224,11 +215,34 @@ func TestConnectivityCheckFail(t *testing.T) {
 			"Unexpected message from bad request result payload. Actual: %v",
 			actual.Message)
 	}
-
 	if actual.Outdated[0] != "agent-pod-hostnet" {
 		t.Errorf("agent-pod-hostnet must be returned in the payload in the 'outdated' array")
 	}
 	if actual.Absent[0] != "agent-pod" {
 		t.Errorf("agent-pod must be returned in the payload in the 'absent' array")
+	}
+}
+
+type FakeChecker struct {
+	ErrorMessage string
+}
+
+func (fc *FakeChecker) Check() ([]string, []string, error) {
+	return nil, nil, errors.New("test error")
+}
+
+func TestConnectivityCheckFailDueError(t *testing.T) {
+	tChecker := &FakeChecker{ErrorMessage: "test error"}
+	ts := createCnntyCheckTestServer(tChecker)
+	defer ts.Close()
+
+	actual := decodeCnntyRespOrFail(cnntyRespOrFail(ts.URL, http.StatusBadRequest, t), t)
+	failMsg := fmt.Sprintf(
+		"Connectivity check fails. Reason: %v",
+		fmt.Sprintf("failed to check agents; details: %v", tChecker.ErrorMessage))
+	if actual.Message != failMsg {
+		t.Errorf(
+			"Unexpected message from bad request result payload. Actual: %v",
+			actual.Message)
 	}
 }

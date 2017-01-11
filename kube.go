@@ -16,21 +16,43 @@ const AgentLabelKey = "app"
 
 var AgentLabelValues = []string{"netchecker-agent", "netchecker-agent-hostnet"}
 
-func kubeClientSet() (kubernetes.Interface, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	clientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientSet, nil
+type Checker interface {
+	Check() (absent, outdated []string, err error)
 }
 
-func kubePods(kcs kubernetes.Interface) (*v1.PodList, error) {
+type KubeProxy struct {
+	Client kubernetes.Interface
+}
+
+type AgentChecker struct {
+	KubeProxy *KubeProxy
+}
+
+func NewAgentChecker() (*AgentChecker, error) {
+	kProxy := &KubeProxy{}
+	err := kProxy.SetupClientSet()
+	if err != nil {
+		return nil, err
+	}
+	return &AgentChecker{KubeProxy: kProxy}, nil
+}
+
+func (kp *KubeProxy) SetupClientSet() error {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	clientSet, err := kubernetes.NewForConfig(config)
+
+	if err != nil {
+		return err
+	}
+
+	kp.Client = clientSet
+	return nil
+}
+
+func (kp *KubeProxy) Pods() (*v1.PodList, error) {
 	selector := labels.NewSelector()
 	requirement, err := labels.NewRequirement(AgentLabelKey, selection.In, AgentLabelValues)
 	if err != nil {
@@ -40,14 +62,18 @@ func kubePods(kcs kubernetes.Interface) (*v1.PodList, error) {
 
 	glog.V(10).Infof("Selector for kubernetes pods: %v", selector.String())
 
-	pods, err := kcs.Core().Pods("").List(v1.ListOptions{LabelSelector: selector.String()})
+	pods, err := kp.Client.Core().Pods("").List(v1.ListOptions{LabelSelector: selector.String()})
 	return pods, err
 }
 
-func checkKubeDataAgainstCache(pods *v1.PodList) ([]string, []string) {
+func (ac *AgentChecker) Check() ([]string, []string, error) {
 	absent := []string{}
 	outdated := []string{}
 
+	pods, err := ac.KubeProxy.Pods()
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, pod := range pods.Items {
 		agentName := pod.ObjectMeta.Name
 		agentData, exists := agentCache[agentName]
@@ -62,5 +88,5 @@ func checkKubeDataAgainstCache(pods *v1.PodList) ([]string, []string) {
 		}
 	}
 
-	return absent, outdated
+	return absent, outdated, nil
 }

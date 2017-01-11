@@ -9,8 +9,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
-
-	"k8s.io/client-go/kubernetes"
 )
 
 type agentInfo struct {
@@ -59,7 +57,7 @@ func getAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 }
 
-func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
+func connectivityCheck(checker Checker) httprouter.Handle {
 	return func(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		res := &CheckConnectivityInfo{
 			Message: fmt.Sprintf(
@@ -69,16 +67,15 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 		status := http.StatusOK
 		errMsg := "Connectivity check fails. Reason: %v"
 
-		pods, err := kubePods(kcs)
+		absent, outdated, err := checker.Check()
 		if err != nil {
 			message := fmt.Sprintf(
-				"failed to retrieve pods from kubernetes; details: %v", err.Error())
+				"failed to check agents; details: %v", err.Error())
 			glog.Error(message)
 			res.Message = fmt.Sprintf(errMsg, message)
 			status = http.StatusBadRequest
 		}
 
-		absent, outdated := checkKubeDataAgainstCache(pods)
 		if len(absent) != 0 || len(outdated) != 0 {
 			glog.V(5).Infof(
 				"Absent|outdated agents detected. Absent -> %v; outdated -> %v",
@@ -109,12 +106,12 @@ func connectivityCheck(kcs kubernetes.Interface) httprouter.Handle {
 	}
 }
 
-func setupRouter(kcs kubernetes.Interface) *httprouter.Router {
+func setupRouter(chkr Checker) *httprouter.Router {
 	glog.V(10).Info("Setting up the url multiplexer")
 	router := httprouter.New()
 	router.POST("/api/v1/agents/:name", updateAgents)
 	router.GET("/api/v1/agents/", getAgents)
-	router.GET("/api/v1/connectivity_check", connectivityCheck(kcs))
+	router.GET("/api/v1/connectivity_check", connectivityCheck(chkr))
 	return router
 }
 
@@ -125,12 +122,12 @@ func main() {
 
 	glog.V(5).Infof("Start listening on %v", endpoint)
 
-	clientSet, err := kubeClientSet()
+	checker, err := NewAgentChecker()
 	if err != nil {
-		glog.Errorf("Error while creating k8s client set. Details: %v", err)
+		glog.Errorf("Error while creating agent checker. Details: %v", err)
 		panic(err.Error())
 	}
 
-	router := setupRouter(clientSet)
+	router := setupRouter(checker)
 	http.ListenAndServe(endpoint, router)
 }
