@@ -31,10 +31,10 @@ clean-all: clean
 	docker rmi $(BUILD_IMAGE_NAME)
 	docker rmi $(DEPLOY_IMAGE_NAME):$(DEPLOY_IMAGE_TAG)
 
-prepare-build-container: Dockerfile.build
+build-utility-image: Dockerfile.build
 	docker build -f Dockerfile.build -t $(BUILD_IMAGE_NAME) .
 
-build-containerized:  $(BUILD_DIR) prepare-build-container
+go-build-containerized:  $(BUILD_DIR) build-utility-image
 	docker run --rm  \
 		-v $(PWD):/go/src/github.com/Mirantis/k8s-netchecker-server:ro \
 		-v $(PWD)/$(BUILD_DIR):/go/src/github.com/Mirantis/k8s-netchecker-server/$(BUILD_DIR) \
@@ -43,10 +43,10 @@ build-containerized:  $(BUILD_DIR) prepare-build-container
 			CGO_ENABLED=0 go build -x -o $(BUILD_DIR)/$(BIN_NAME) -ldflags "-s -w" $(glide novendor) &&\
 			chown -R $(shell id -u):$(shell id -u) $(BUILD_DIR)'
 
-prepare-deploy-container: build-containerized
+build-release-image: go-build-containerized
 	docker build -t $(DEPLOY_IMAGE_NAME):$(DEPLOY_IMAGE_TAG) .
 
-test-containerized: prepare-build-container
+test-containerized: build-utility-image
 	docker run --rm \
 		-v $(PWD):/go/src/github.com/Mirantis/k8s-netchecker-server:ro \
 		$(BUILD_IMAGE_NAME) go test -v $(glide novendor)
