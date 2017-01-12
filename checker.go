@@ -28,7 +28,11 @@ type AgentChecker struct {
 	KubeProxy *KubeProxy
 }
 
-func NewAgentChecker() (*AgentChecker, error) {
+func NewAgentChecker(proxyInit bool) (*AgentChecker, error) {
+	if !proxyInit {
+		return &AgentChecker{}, nil
+	}
+
 	kProxy := &KubeProxy{}
 	err := kProxy.SetupClientSet()
 	if err != nil {

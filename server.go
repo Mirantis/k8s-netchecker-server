@@ -117,12 +117,14 @@ func setupRouter(chkr Checker) *httprouter.Router {
 
 func main() {
 	var endpoint string
+	var initKubeProxy bool
 	flag.StringVar(&endpoint, "endpoint", "0.0.0.0:8081", "End point (IP address, port) for server to listen on")
+	flag.BoolVar(&initKubeProxy, "kubeproxyinit", false, "Control initialization kubernetes client set for connectivity check")
 	flag.Parse()
 
 	glog.V(5).Infof("Start listening on %v", endpoint)
 
-	checker, err := NewAgentChecker()
+	checker, err := NewAgentChecker(initKubeProxy)
 	if err != nil {
 		glog.Errorf("Error while creating agent checker. Details: %v", err)
 		panic(err.Error())
