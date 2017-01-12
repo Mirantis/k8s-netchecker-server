@@ -1,8 +1,8 @@
 BUILD_DIR=_output
 BIN_NAME=server
-BUILD_IMAGE_NAME=k8s-netchecker-server.build
-DEPLOY_IMAGE_NAME=aateem/k8s-netchecker-server
-DEPLOY_IMAGE_TAG=golang
+UTILITY_IMAGE_NAME=k8s-netchecker-server.build
+RELEASE_IMAGE_NAME=aateem/k8s-netchecker-server
+RELEASE_IMAGE_TAG=golang
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -28,25 +28,25 @@ clean:
 
 .PHONY: clean-all
 clean-all: clean
-	docker rmi $(BUILD_IMAGE_NAME)
-	docker rmi $(DEPLOY_IMAGE_NAME):$(DEPLOY_IMAGE_TAG)
+	docker rmi $(UTILITY_IMAGE_NAME)
+	docker rmi $(RELEASE_IMAGE_NAME):$(RELEASE_IMAGE_TAG)
 
 build-utility-image: Dockerfile.build
-	docker build -f Dockerfile.build -t $(BUILD_IMAGE_NAME) .
+	docker build -f Dockerfile.build -t $(UTILITY_IMAGE_NAME) .
 
 go-build-containerized:  $(BUILD_DIR) build-utility-image
 	docker run --rm  \
 		-v $(PWD):/go/src/github.com/Mirantis/k8s-netchecker-server:ro \
 		-v $(PWD)/$(BUILD_DIR):/go/src/github.com/Mirantis/k8s-netchecker-server/$(BUILD_DIR) \
 		-w /go/src/github.com/Mirantis/k8s-netchecker-server/ \
-		$(BUILD_IMAGE_NAME) bash -c '\
+		$(UTILITY_IMAGE_NAME) bash -c '\
 			CGO_ENABLED=0 go build -x -o $(BUILD_DIR)/$(BIN_NAME) -ldflags "-s -w" $(glide novendor) &&\
 			chown -R $(shell id -u):$(shell id -u) $(BUILD_DIR)'
 
 build-release-image: go-build-containerized
-	docker build -t $(DEPLOY_IMAGE_NAME):$(DEPLOY_IMAGE_TAG) .
+	docker build -t $(RELEASE_IMAGE_NAME):$(RELEASE_IMAGE_TAG) .
 
 test-containerized: build-utility-image
 	docker run --rm \
 		-v $(PWD):/go/src/github.com/Mirantis/k8s-netchecker-server:ro \
-		$(BUILD_IMAGE_NAME) go test -v $(glide novendor)
+		$(UTILITY_IMAGE_NAME) go test -v $(glide novendor)
