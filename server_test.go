@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,6 +76,76 @@ func TestUpdateAgents(t *testing.T) {
 			"Actual data from agentCache %v is not as expected %v",
 			agentCache["test"],
 			expectedAgent)
+	}
+}
+
+func TestUpdateAgentsFailedUnmarshal(t *testing.T) {
+	cleanAgentCache()
+	defer cleanAgentCache()
+
+	router := httprouter.New()
+	router.POST("/api/v1/agents/:name", updateAgents)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	resp, err := http.Post(
+		ts.URL+"/api/v1/agents/test", "text", strings.NewReader("some text"))
+	if err != nil {
+		t.Errorf("Failed to perform POST request on updateAgents. Details: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf(
+			"Response status should be http.StatusInternalServerError, instead it is %v",
+			resp.StatusCode)
+	}
+
+	bData := make([]byte, resp.ContentLength)
+	n, err := resp.Body.Read(bData)
+	if n <= 0 && err != nil {
+		t.Errorf("Error while reading response from updateAgents. Details: %v", err)
+	}
+	s := string(bData)
+	expected := "Error while unmarshaling request's data."
+	if !strings.Contains(s, expected) {
+		t.Errorf("Response data should contains following message '%v'. Instead it is '%v'",
+			expected, s)
+	}
+
+	_, exists := agentCache["test"]
+	if exists {
+		t.Error("Agent cache should not be updated")
+	}
+}
+
+type Body struct {
+	Message string
+}
+
+func (b *Body) Read(p []byte) (n int, err error) {
+	return 0, errors.New(b.Message)
+}
+
+func TestUpdateAgentsFailReadBody(t *testing.T) {
+	cleanAgentCache()
+	defer cleanAgentCache()
+
+	body := &Body{Message: "test error message"}
+	r := httptest.NewRequest(
+		"POST", "/api/v1/agents/test", body)
+	r.ContentLength = 0
+	rw := httptest.NewRecorder()
+	updateAgents(rw, r, httprouter.Params{httprouter.Param{Key: "name", Value: "test"}})
+
+	if rw.Code != http.StatusInternalServerError {
+		t.Errorf(
+			"Response status should be http.StatusInternalServerError, instead it is %v",
+			rw.Code)
+	}
+
+	_, exists := agentCache["test"]
+	if exists {
+		t.Error("Agent cache should not be updated")
 	}
 }
 
