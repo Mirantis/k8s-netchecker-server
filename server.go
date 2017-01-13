@@ -29,17 +29,26 @@ type CheckConnectivityInfo struct {
 var agentCache = make(map[string]agentInfo)
 
 func updateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
+	var message string
+
 	body := make([]byte, r.ContentLength)
 	n, err := r.Body.Read(body)
 	if n <= 0 && err != nil {
-		glog.Errorf("Error while reading request's body. Details: %v", err)
+		message = fmt.Sprintf("Error while reading request's body. Details: %v", err)
+		glog.Errorf(message)
+		http.Error(rw, message, http.StatusInternalServerError)
+		return
 	}
 
 	agentData := agentInfo{}
 	err = json.Unmarshal(body, &agentData)
 	if err != nil {
-		glog.Errorf("Error while unmarshaling request's data. Details: %v", err)
+		message = fmt.Sprintf("Error while unmarshaling request's data. Details: %v", err)
+		glog.Errorf(message)
+		http.Error(rw, message, http.StatusInternalServerError)
+		return
 	}
+
 	agentData.LastUpdated = time.Now()
 	glog.V(10).Infof("Updating the agents cache with value: %v", agentData)
 	agentCache[rp.ByName("name")] = agentData
