@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
+	"github.com/urfave/negroni"
 )
 
 type agentInfo struct {
@@ -140,5 +141,10 @@ func main() {
 	}
 
 	router := setupRouter(checker)
-	http.ListenAndServe(endpoint, router)
+
+	n := negroni.New()
+	n.Use(negroni.NewLogger())
+	n.UseHandler(router)
+
+	http.ListenAndServe(endpoint, n)
 }

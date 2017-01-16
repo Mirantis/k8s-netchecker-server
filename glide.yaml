@@ -9,3 +9,4 @@ import:
   - pkg/labels
   - pkg/selection
   - rest
+-package: github.com/urfare/negroni
