@@ -79,10 +79,10 @@ func connectivityCheck(checker Checker) httprouter.Handle {
 		absent, outdated, err := checker.Check()
 		if err != nil {
 			message := fmt.Sprintf(
-				"failed to check agents; details: %v", err.Error())
+				"Error occured while checking the agents. Details: %v", err)
 			glog.Error(message)
-			res.Message = fmt.Sprintf(errMsg, message)
-			status = http.StatusBadRequest
+			http.Error(rw, message, http.StatusInternalServerError)
+			return
 		}
 
 		if len(absent) != 0 || len(outdated) != 0 {

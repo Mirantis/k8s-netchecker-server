@@ -301,13 +301,16 @@ func TestConnectivityCheckFailDueError(t *testing.T) {
 	ts := createCnntyCheckTestServer(tChecker)
 	defer ts.Close()
 
-	actual := decodeCnntyRespOrFail(cnntyRespOrFail(ts.URL, http.StatusBadRequest, t), t)
+	resp := cnntyRespOrFail(ts.URL, http.StatusInternalServerError, t)
+	bData := readBodyBytesOrFail(resp, t)
+	actual := string(bData)
+
 	failMsg := fmt.Sprintf(
-		"Connectivity check fails. Reason: %v",
-		fmt.Sprintf("failed to check agents; details: %v", tChecker.ErrorMessage))
-	if actual.Message != failMsg {
+		"Error occured while checking the agents. Details: %v\n", tChecker.ErrorMessage)
+
+	if actual != failMsg {
 		t.Errorf(
 			"Unexpected message from bad request result payload. Actual: %v",
-			actual.Message)
+			actual)
 	}
 }
