@@ -28,6 +28,29 @@ func agentExample() agentInfo {
 	}
 }
 
+func checkRespStatus(expected, actual int, t *testing.T) {
+	if actual != expected {
+		t.Errorf("Response status code %v is not as expected %v", actual, expected)
+	}
+}
+
+func checkKey(key string, expected bool, t *testing.T) {
+	_, exists := agentCache[key]
+	if exists != expected {
+		t.Errorf("Presence of the key %v in agentCache must be %v", key, expected)
+	}
+}
+
+func readBodyBytesOrFail(resp *http.Response, t *testing.T) []byte {
+	bData := make([]byte, resp.ContentLength)
+	n, err := resp.Body.Read(bData)
+	if n <= 0 && err != nil {
+		t.Errorf("Error while reading response from updateAgents. Details: %v", err)
+	}
+
+	return bData
+}
+
 func TestUpdateAgents(t *testing.T) {
 	cleanAgentCache()
 	defer cleanAgentCache()
@@ -53,10 +76,9 @@ func TestUpdateAgents(t *testing.T) {
 		t.Errorf("Failed to post example agent to server. Details: %v", err)
 	}
 
-	aData, exists := agentCache["test"]
-	if !exists {
-		t.Errorf("agentCache does not contain key %v after updateAgents method call", "test")
-	}
+	checkKey("test", true, t)
+
+	aData := agentCache["test"]
 
 	//time.Now() is always different
 	expectedAgent.LastUpdated = aData.LastUpdated
@@ -94,17 +116,9 @@ func TestUpdateAgentsFailedUnmarshal(t *testing.T) {
 		t.Errorf("Failed to perform POST request on updateAgents. Details: %v", err)
 	}
 
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf(
-			"Response status should be http.StatusInternalServerError, instead it is %v",
-			resp.StatusCode)
-	}
+	checkRespStatus(http.StatusInternalServerError, resp.StatusCode, t)
 
-	bData := make([]byte, resp.ContentLength)
-	n, err := resp.Body.Read(bData)
-	if n <= 0 && err != nil {
-		t.Errorf("Error while reading response from updateAgents. Details: %v", err)
-	}
+	bData := readBodyBytesOrFail(resp, t)
 	s := string(bData)
 	expected := "Error while unmarshaling request's data."
 	if !strings.Contains(s, expected) {
@@ -112,10 +126,7 @@ func TestUpdateAgentsFailedUnmarshal(t *testing.T) {
 			expected, s)
 	}
 
-	_, exists := agentCache["test"]
-	if exists {
-		t.Error("Agent cache should not be updated")
-	}
+	checkKey("test", false, t)
 }
 
 type Body struct {
@@ -137,16 +148,8 @@ func TestUpdateAgentsFailReadBody(t *testing.T) {
 	rw := httptest.NewRecorder()
 	updateAgents(rw, r, httprouter.Params{httprouter.Param{Key: "name", Value: "test"}})
 
-	if rw.Code != http.StatusInternalServerError {
-		t.Errorf(
-			"Response status should be http.StatusInternalServerError, instead it is %v",
-			rw.Code)
-	}
-
-	_, exists := agentCache["test"]
-	if exists {
-		t.Error("Agent cache should not be updated")
-	}
+	checkRespStatus(http.StatusInternalServerError, rw.Code, t)
+	checkKey("test", false, t)
 }
 
 func TestGetAgents(t *testing.T) {
@@ -164,17 +167,12 @@ func TestGetAgents(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	res, err := http.Get(ts.URL + "/api/v1/agents/")
+	resp, err := http.Get(ts.URL + "/api/v1/agents/")
 	if err != nil {
 		t.Errorf("Failed to GET agents' data from server. Details: %v", err)
 	}
 
-	actual := make([]byte, res.ContentLength)
-	n, err := res.Body.Read(actual)
-	if n <= 0 && err != nil {
-		t.Errorf("Failed to read response body of GET agents: Details: %v", err)
-	}
-
+	actual := readBodyBytesOrFail(resp, t)
 	if !bytes.Equal(expected, actual) {
 		t.Error("Response body for GET agents is not as expected")
 	}
@@ -213,11 +211,7 @@ func cnntyRespOrFail(serverURL string, expectedStatus int, t *testing.T) *http.R
 	if err != nil {
 		t.Errorf("Failed to GET successfull connectivity check from server. Details: %v", err)
 	}
-	if res.StatusCode != expectedStatus {
-		t.Errorf(
-			"Status code of connectivity check response must be %v instead it is %v",
-			expectedStatus, res.StatusCode)
-	}
+	checkRespStatus(expectedStatus, res.StatusCode, t)
 	return res
 }
 
