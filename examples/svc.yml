@@ -1,0 +1,14 @@
+kind: "Service"
+apiVersion: "v1"
+metadata:
+  name: "netchecker-service"
+spec:
+  selector:
+    app: "netchecker-server"
+  ports:
+    -
+      protocol: "TCP"
+      port: 8081
+      targetPort: 8081
+      nodePort: 31081
+  type: "NodePort"
