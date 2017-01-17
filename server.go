@@ -67,6 +67,33 @@ func getAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 }
 
+func getSingleAgent(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
+	aName := rp.ByName("name")
+	aData, exists := agentCache[aName]
+	if !exists {
+		glog.V(5).Infof("Agent with name %v is not found in the cache", aName)
+		http.Error(rw, "There is no such entry in the agent cache", http.StatusNotFound)
+		return
+	}
+
+	aBytes, err := json.Marshal(aData)
+	if err != nil {
+		message := fmt.Sprintf(
+			"Error while marshaling data for agent %v. Details: %v", aName, err)
+		glog.Error(message)
+		http.Error(rw, message, http.StatusInternalServerError)
+		return
+	}
+
+	_, err = rw.Write(aBytes)
+	if err != nil {
+		message := fmt.Sprintf(
+			"Error while writing bytes into response body. Details: %v", err)
+		glog.Error(message)
+		http.Error(rw, message, http.StatusInternalServerError)
+	}
+}
+
 func connectivityCheck(checker Checker) httprouter.Handle {
 	return func(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		res := &CheckConnectivityInfo{
@@ -120,6 +147,7 @@ func setupRouter(chkr Checker) *httprouter.Router {
 	glog.V(10).Info("Setting up the url multiplexer")
 	router := httprouter.New()
 	router.POST("/api/v1/agents/:name", updateAgents)
+	router.GET("/api/v1/agents/:name", getSingleAgent)
 	router.GET("/api/v1/agents/", getAgents)
 	router.GET("/api/v1/connectivity_check", connectivityCheck(chkr))
 	return router

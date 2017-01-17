@@ -51,6 +51,20 @@ func readBodyBytesOrFail(resp *http.Response, t *testing.T) []byte {
 	return bData
 }
 
+func marshalExpectedWithActualDate(expected agentInfo, aName string, t *testing.T) []byte {
+	actual := agentCache[aName]
+
+	//time.Now() is always different
+	expected.LastUpdated = actual.LastUpdated
+
+	bExpected, err := json.Marshal(expected)
+	if err != nil {
+		t.Errorf("Failed to marshal expected data with last_updated field. Details: %v", err)
+	}
+
+	return bExpected
+}
+
 func TestUpdateAgents(t *testing.T) {
 	cleanAgentCache()
 	defer cleanAgentCache()
@@ -80,13 +94,7 @@ func TestUpdateAgents(t *testing.T) {
 
 	aData := agentCache["test"]
 
-	//time.Now() is always different
-	expectedAgent.LastUpdated = aData.LastUpdated
-
-	expected, err := json.Marshal(expectedAgent)
-	if err != nil {
-		t.Errorf("Failed to marshal expected data with last_updated field. Details: %v", err)
-	}
+	expected := marshalExpectedWithActualDate(expectedAgent, "test", t)
 
 	actual, err := json.Marshal(aData)
 	if err != nil {
@@ -174,6 +182,34 @@ func TestGetAgents(t *testing.T) {
 
 	actual := readBodyBytesOrFail(resp, t)
 	if !bytes.Equal(expected, actual) {
+		t.Error("Response body for GET agents is not as expected")
+	}
+}
+
+func TestGetSingleAgent(t *testing.T) {
+	cleanAgentCache()
+	defer cleanAgentCache()
+
+	agentCache["test"] = agentExample()
+
+	router := httprouter.New()
+	router.GET("/api/v1/agents/:name", getSingleAgent)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/v1/agents/test")
+	if err != nil {
+		t.Errorf("Failed to GET agents' data from server. Details: %v", err)
+	}
+
+	actual := readBodyBytesOrFail(resp, t)
+
+	bExpected, err := json.Marshal(agentCache["test"])
+	if err != nil {
+		t.Errorf("Failed to marshal expected data with last_updated field. Details: %v", err)
+	}
+
+	if !bytes.Equal(bExpected, actual) {
 		t.Error("Response body for GET agents is not as expected")
 	}
 }
