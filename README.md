@@ -23,4 +23,4 @@ The server exposes following API interface.
 
 - GET/POST - /api/v1/agents/{agent_name} - get, create/update agent's entry in the agent cache
 - GET - /api/v1/agents/ - get the whole agent cache dump
-- GWT - /api/v1/connectivity_check - get result of connectivity check between the server and the agents
+- GET - /api/v1/connectivity_check - get result of connectivity check between the server and the agents
