@@ -128,7 +128,7 @@ func TestUpdateAgentsFailedUnmarshal(t *testing.T) {
 
 	bData := readBodyBytesOrFail(resp, t)
 	s := string(bData)
-	expected := "Error while unmarshaling request's data."
+	expected := "Error while unmarshaling data."
 	if !strings.Contains(s, expected) {
 		t.Errorf("Response data should contains following message '%v'. Instead it is '%v'",
 			expected, s)
@@ -157,6 +157,13 @@ func TestUpdateAgentsFailReadBody(t *testing.T) {
 	updateAgents(rw, r, httprouter.Params{httprouter.Param{Key: "name", Value: "test"}})
 
 	checkRespStatus(http.StatusInternalServerError, rw.Code, t)
+
+	s := string(rw.Body.Bytes())
+	expected := "Error while reading bytes from the request's body."
+	if !strings.Contains(s, expected) {
+		t.Errorf("Response data should contains following message '%v'. Instead it is '%v'",
+			expected, s)
+	}
 	checkKey("test", false, t)
 }
 

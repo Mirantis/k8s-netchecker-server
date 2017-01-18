@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -30,23 +29,8 @@ type CheckConnectivityInfo struct {
 var agentCache = make(map[string]agentInfo)
 
 func updateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
-	var message string
-
-	body := make([]byte, r.ContentLength)
-	n, err := r.Body.Read(body)
-	if n <= 0 && err != nil {
-		message = fmt.Sprintf("Error while reading request's body. Details: %v", err)
-		glog.Errorf(message)
-		http.Error(rw, message, http.StatusInternalServerError)
-		return
-	}
-
 	agentData := agentInfo{}
-	err = json.Unmarshal(body, &agentData)
-	if err != nil {
-		message = fmt.Sprintf("Error while unmarshaling request's data. Details: %v", err)
-		glog.Errorf(message)
-		http.Error(rw, message, http.StatusInternalServerError)
+	if err := processRequest(r, &agentData, rw); err != nil {
 		return
 	}
 
@@ -56,15 +40,7 @@ func updateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params)
 }
 
 func getAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	body, err := json.Marshal(agentCache)
-	if err != nil {
-		glog.Errorf("Error while marshaling agents' data. Details: %v", err)
-	}
-
-	_, err = rw.Write(body)
-	if err != nil {
-		glog.Errorf("Error while writing response data for GET agents. Details: %v", err)
-	}
+	processResponse(rw, agentCache)
 }
 
 func getSingleAgent(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
@@ -75,23 +51,7 @@ func getSingleAgent(rw http.ResponseWriter, r *http.Request, rp httprouter.Param
 		http.Error(rw, "There is no such entry in the agent cache", http.StatusNotFound)
 		return
 	}
-
-	aBytes, err := json.Marshal(aData)
-	if err != nil {
-		message := fmt.Sprintf(
-			"Error while marshaling data for agent %v. Details: %v", aName, err)
-		glog.Error(message)
-		http.Error(rw, message, http.StatusInternalServerError)
-		return
-	}
-
-	_, err = rw.Write(aBytes)
-	if err != nil {
-		message := fmt.Sprintf(
-			"Error while writing bytes into response body. Details: %v", err)
-		glog.Error(message)
-		http.Error(rw, message, http.StatusInternalServerError)
-	}
+	processResponse(rw, aData)
 }
 
 func connectivityCheck(checker Checker) httprouter.Handle {
@@ -131,15 +91,7 @@ func connectivityCheck(checker Checker) httprouter.Handle {
 
 		rw.WriteHeader(status)
 
-		body, err := json.Marshal(res)
-		if err != nil {
-			glog.Errorf("Marshalling of body for connectivity check response failed. Details: %v", err)
-		}
-
-		_, err = rw.Write(body)
-		if err != nil {
-			glog.Errorf("Writing response body failed. Details: %v", err)
-		}
+		processResponse(rw, res)
 	}
 }
 
