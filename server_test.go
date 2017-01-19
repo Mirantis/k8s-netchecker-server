@@ -236,7 +236,15 @@ func CSwithPods() kubernetes.Interface {
 				Labels:    map[string]string{"app": AgentLabelValues[0]},
 				Namespace: v1.NamespaceDefault,
 			},
-		})
+		},
+		&v1.Pod{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "agent-pod-test",
+				Labels:    map[string]string{"app": "test"},
+				Namespace: v1.NamespaceDefault,
+			},
+		},
+	)
 }
 
 func createAgentChecker() *AgentChecker {
