@@ -57,16 +57,13 @@ func (kp *KubeProxy) SetupClientSet() error {
 }
 
 func (kp *KubeProxy) Pods() (*v1.PodList, error) {
-	selector := labels.NewSelector()
 	requirement, err := labels.NewRequirement(AgentLabelKey, selection.In, AgentLabelValues)
 	if err != nil {
 		return nil, err
 	}
-	selector.Add(*requirement)
+	glog.V(10).Infof("Selector for kubernetes pods: %v", requirement.String())
 
-	glog.V(10).Infof("Selector for kubernetes pods: %v", selector.String())
-
-	pods, err := kp.Client.Core().Pods("").List(v1.ListOptions{LabelSelector: selector.String()})
+	pods, err := kp.Client.Core().Pods("").List(v1.ListOptions{LabelSelector: requirement.String()})
 	return pods, err
 }
 
