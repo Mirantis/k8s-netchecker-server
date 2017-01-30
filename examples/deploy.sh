@@ -41,7 +41,7 @@ spec:
         - containerPort: 8081
           hostPort: 8081
       args:
-        - "v=5"
+        - "-v=5"
         - "-logtostderr"
         - "-kubeproxyinit"
         - "-endpoint=0.0.0.0:8081"
