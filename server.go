@@ -105,6 +105,14 @@ func setupRouter(chkr Checker) *httprouter.Router {
 	return router
 }
 
+func addMiddleware(handler http.Handler) http.Handler {
+	n := negroni.New()
+	n.Use(negroni.NewLogger())
+	n.Use(negroni.NewRecovery())
+	n.UseHandler(handler)
+	return n
+}
+
 func main() {
 	var endpoint string
 	var initKubeProxy bool
@@ -120,11 +128,6 @@ func main() {
 		panic(err.Error())
 	}
 
-	router := setupRouter(checker)
-
-	n := negroni.New()
-	n.Use(negroni.NewLogger())
-	n.UseHandler(router)
-
-	http.ListenAndServe(endpoint, n)
+	handler := addMiddleware(setupRouter(checker))
+	http.ListenAndServe(endpoint, handler)
 }
