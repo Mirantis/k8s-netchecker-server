@@ -1,0 +1,13 @@
+container:
+  repository: aateem/k8s-netchecker-server
+  tag: golang
+  pullPolicy: Always
+  port: 8081
+  hostPort: 8081
+
+service:
+  name: netchecker-server
+  type: NodePort
+  externalPort: 8081
+  internalPort: 8081
+  nodePort: 31081
