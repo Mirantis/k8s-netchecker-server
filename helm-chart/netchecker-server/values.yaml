@@ -3,8 +3,8 @@ app:
 
 container:
   name: netchecker-server
-  repository: aateem/k8s-netchecker-server
-  tag: golang
+  repository: quay.io/l23network/k8s-netchecker-server
+  tag: latest
   pullPolicy: Always
   port: 8081
   hostPort: 8081

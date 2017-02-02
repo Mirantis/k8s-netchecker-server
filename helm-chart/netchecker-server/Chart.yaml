@@ -1,7 +1,7 @@
 apiVersion: v1
 description: A simple network checker for kubernetes (server-part)
 name: netchecker-server
-version: 1.0
+version: v1.0
 maintainers:
     - name: Artem Roma
       email: aroma@mirantis.com
