@@ -1,4 +1,8 @@
+app:
+  name: netchecker-server
+
 container:
+  name: netchecker-server
   repository: aateem/k8s-netchecker-server
   tag: golang
   pullPolicy: Always
@@ -6,7 +10,7 @@ container:
   hostPort: 8081
 
 service:
-  name: netchecker-server
+  name: netchecker-service
   type: NodePort
   externalPort: 8081
   internalPort: 8081
