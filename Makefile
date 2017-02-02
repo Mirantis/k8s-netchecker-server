@@ -1,8 +1,9 @@
 BUILD_DIR=_output
 BIN_NAME=server
 UTILITY_IMAGE_NAME=k8s-netchecker-server.build
-RELEASE_IMAGE_NAME=aateem/k8s-netchecker-server
-RELEASE_IMAGE_TAG=golang
+RELEASE_IMAGE_NAME?=quay.io/l23network/k8s-netchecker-server
+RELEASE_IMAGE_TAG?=latest
+TARGET_IMAGE=$(RELEASE_IMAGE_NAME):$(RELEASE_IMAGE_TAG)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -29,7 +30,7 @@ clean:
 .PHONY: clean-all
 clean-all: clean
 	docker rmi $(UTILITY_IMAGE_NAME)
-	docker rmi $(RELEASE_IMAGE_NAME):$(RELEASE_IMAGE_TAG)
+	docker rmi $(TARGET_IMAGE)
 
 build-utility-image: Dockerfile.build
 	docker build -f Dockerfile.build -t $(UTILITY_IMAGE_NAME) .
@@ -44,7 +45,7 @@ go-build-containerized:  $(BUILD_DIR) build-utility-image
 			chown -R $(shell id -u):$(shell id -u) $(BUILD_DIR)'
 
 build-release-image: go-build-containerized
-	docker build -t $(RELEASE_IMAGE_NAME):$(RELEASE_IMAGE_TAG) .
+	docker build -t $(TARGET_IMAGE) .
 
 test-containerized: build-utility-image
 	docker run --rm \
