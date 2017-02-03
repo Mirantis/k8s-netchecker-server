@@ -2,12 +2,12 @@ app:
   name: netchecker-server
 
 image:
-  name: netchecker-server
   repository: quay.io/l23network/k8s-netchecker-server
   tag: latest
   pullPolicy: Always
 
 container:
+  name: netchecker-server
   port: 8081
   hostPort: 8081
   args:
