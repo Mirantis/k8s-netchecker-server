@@ -1,0 +1,24 @@
+app:
+  name: netchecker-server
+
+image:
+  repository: quay.io/l23network/k8s-netchecker-server
+  tag: latest
+  pullPolicy: Always
+
+container:
+  name: netchecker-server
+  port: 8081
+  hostPort: 8081
+  args:
+    - -v=5
+    - -logtostderr
+    - -kubeproxyinit
+    - -endpoint=0.0.0.0:8081
+
+service:
+  name: netchecker-service
+  type: NodePort
+  externalPort: 8081
+  internalPort: 8081
+  nodePort: 31081

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Values.app.name }}
+  labels:
+    app: {{ .Values.app.name }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+spec:
+  containers:
+    - name: {{ .Values.container.name }}
+      image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+      imagePullPolicy: {{.Values.image.pullPolicy}}
+      ports:
+        - containerPort: {{ .Values.container.port }}
+          hostPort: {{ .Values.container.hostPort }}
+      args:
+        {{- range .Values.container.args }}
+        - {{ . | quote }}
+        {{- end }}
