@@ -17,7 +17,3 @@ spec:
         {{- range .Values.container.args }}
         - {{ . | quote }}
         {{- end }}
-        #- "-v=5"
-        #- "-logtostderr"
-        #- "-kubeproxyinit"
-        #- "-endpoint=0.0.0.0:8081"
