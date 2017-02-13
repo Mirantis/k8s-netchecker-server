@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"bytes"
@@ -18,10 +18,10 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
-func cleanAgentCache() { agentCache = make(map[string]agentInfo) }
+func cleanAgentCache() { AgentCache = make(map[string]AgentInfo) }
 
-func agentExample() agentInfo {
-	return agentInfo{
+func agentExample() AgentInfo {
+	return AgentInfo{
 		ReportInterval: 5,
 		PodName:        "test",
 		HostDate:       time.Now(),
@@ -35,9 +35,9 @@ func checkRespStatus(expected, actual int, t *testing.T) {
 }
 
 func checkKey(key string, expected bool, t *testing.T) {
-	_, exists := agentCache[key]
+	_, exists := AgentCache[key]
 	if exists != expected {
-		t.Errorf("Presence of the key %v in agentCache must be %v", key, expected)
+		t.Errorf("Presence of the key %v in AgentCache must be %v", key, expected)
 	}
 }
 
@@ -45,14 +45,14 @@ func readBodyBytesOrFail(resp *http.Response, t *testing.T) []byte {
 	bData := make([]byte, resp.ContentLength)
 	n, err := resp.Body.Read(bData)
 	if n <= 0 && err != nil {
-		t.Errorf("Error while reading response from updateAgents. Details: %v", err)
+		t.Errorf("Error while reading response from UpdateAgents. Details: %v", err)
 	}
 
 	return bData
 }
 
-func marshalExpectedWithActualDate(expected agentInfo, aName string, t *testing.T) []byte {
-	actual := agentCache[aName]
+func marshalExpectedWithActualDate(expected AgentInfo, aName string, t *testing.T) []byte {
+	actual := AgentCache[aName]
 
 	//time.Now() is always different
 	expected.LastUpdated = actual.LastUpdated
@@ -76,7 +76,7 @@ func TestUpdateAgents(t *testing.T) {
 	}
 
 	router := httprouter.New()
-	router.POST("/api/v1/agents/:name", updateAgents)
+	router.POST("/api/v1/agents/:name", UpdateAgents)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -92,7 +92,7 @@ func TestUpdateAgents(t *testing.T) {
 
 	checkKey("test", true, t)
 
-	aData := agentCache["test"]
+	aData := AgentCache["test"]
 
 	expected := marshalExpectedWithActualDate(expectedAgent, "test", t)
 
@@ -103,8 +103,8 @@ func TestUpdateAgents(t *testing.T) {
 
 	if !bytes.Equal(expected, actual) {
 		t.Errorf(
-			"Actual data from agentCache %v is not as expected %v",
-			agentCache["test"],
+			"Actual data from AgentCache %v is not as expected %v",
+			AgentCache["test"],
 			expectedAgent)
 	}
 }
@@ -114,14 +114,14 @@ func TestUpdateAgentsFailedUnmarshal(t *testing.T) {
 	defer cleanAgentCache()
 
 	router := httprouter.New()
-	router.POST("/api/v1/agents/:name", updateAgents)
+	router.POST("/api/v1/agents/:name", UpdateAgents)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	resp, err := http.Post(
 		ts.URL+"/api/v1/agents/test", "text", strings.NewReader("some text"))
 	if err != nil {
-		t.Errorf("Failed to perform POST request on updateAgents. Details: %v", err)
+		t.Errorf("Failed to perform POST request on UpdateAgents. Details: %v", err)
 	}
 
 	checkRespStatus(http.StatusInternalServerError, resp.StatusCode, t)
@@ -154,7 +154,7 @@ func TestUpdateAgentsFailReadBody(t *testing.T) {
 		"POST", "/api/v1/agents/test", body)
 	r.ContentLength = 0
 	rw := httptest.NewRecorder()
-	updateAgents(rw, r, httprouter.Params{httprouter.Param{Key: "name", Value: "test"}})
+	UpdateAgents(rw, r, httprouter.Params{httprouter.Param{Key: "name", Value: "test"}})
 
 	checkRespStatus(http.StatusInternalServerError, rw.Code, t)
 
@@ -171,14 +171,14 @@ func TestGetAgents(t *testing.T) {
 	cleanAgentCache()
 	defer cleanAgentCache()
 
-	agentCache["test"] = agentExample()
-	expected, err := json.Marshal(agentCache)
+	AgentCache["test"] = agentExample()
+	expected, err := json.Marshal(AgentCache)
 	if err != nil {
-		t.Errorf("Failed to marshal agentCache (making expected byte array). Details: %v", err)
+		t.Errorf("Failed to marshal AgentCache (making expected byte array). Details: %v", err)
 	}
 
 	router := httprouter.New()
-	router.GET("/api/v1/agents/", getAgents)
+	router.GET("/api/v1/agents/", GetAgents)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -197,10 +197,10 @@ func TestGetSingleAgent(t *testing.T) {
 	cleanAgentCache()
 	defer cleanAgentCache()
 
-	agentCache["test"] = agentExample()
+	AgentCache["test"] = agentExample()
 
 	router := httprouter.New()
-	router.GET("/api/v1/agents/:name", getSingleAgent)
+	router.GET("/api/v1/agents/:name", GetSingleAgent)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -211,7 +211,7 @@ func TestGetSingleAgent(t *testing.T) {
 
 	actual := readBodyBytesOrFail(resp, t)
 
-	bExpected, err := json.Marshal(agentCache["test"])
+	bExpected, err := json.Marshal(AgentCache["test"])
 	if err != nil {
 		t.Errorf("Failed to marshal expected data with last_updated field. Details: %v", err)
 	}
@@ -253,7 +253,7 @@ func createAgentChecker() *AgentChecker {
 
 func createCnntyCheckTestServer(checker Checker) *httptest.Server {
 	router := httprouter.New()
-	router.GET("/api/v1/connectivity_check", connectivityCheck(checker))
+	router.GET("/api/v1/connectivity_check", ConnectivityCheck(checker))
 	return httptest.NewServer(router)
 }
 
@@ -286,10 +286,10 @@ func TestConnectivityCheckSuccess(t *testing.T) {
 	agent.LastUpdated = agent.HostDate
 
 	agent.PodName = "agent-pod"
-	agentCache[agent.PodName] = agent
+	AgentCache[agent.PodName] = agent
 
 	agent.PodName = "agent-pod-hostnet"
-	agentCache[agent.PodName] = agent
+	AgentCache[agent.PodName] = agent
 
 	aChecker := createAgentChecker()
 	ts := createCnntyCheckTestServer(aChecker)
@@ -297,7 +297,7 @@ func TestConnectivityCheckSuccess(t *testing.T) {
 
 	actual := decodeCnntyRespOrFail(cnntyRespOrFail(ts.URL, http.StatusOK, t), t)
 	successfullMsg := fmt.Sprintf(
-		"All %v pods successfully reported back to the server", len(agentCache))
+		"All %v pods successfully reported back to the server", len(AgentCache))
 	if actual.Message != successfullMsg {
 		t.Errorf(
 			"Unexpected message from successfull result payload. Actual: %v",
@@ -315,7 +315,7 @@ func TestConnectivityCheckFail(t *testing.T) {
 	//back to the past
 	agent.LastUpdated = agent.HostDate.Add(
 		-time.Second * time.Duration(agent.ReportInterval+1))
-	agentCache[agent.PodName] = agent
+	AgentCache[agent.PodName] = agent
 
 	aChecker := createAgentChecker()
 	ts := createCnntyCheckTestServer(aChecker)

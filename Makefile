@@ -10,7 +10,7 @@ $(BUILD_DIR):
 
 .PHONY: build-local
 build-local: $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(BIN_NAME) $(glide novendor)
+	go build -o $(BUILD_DIR)/$(BIN_NAME) cmd/server.go
 
 .PHONY: rebuild-local
 rebuild-local: clean build-local
@@ -21,7 +21,7 @@ get-deps:
 
 .PHONY: test-local
 test-local:
-	go test -v $(glide novendor)
+	go test -v ./pkg/...
 
 .PHONY: clean
 clean:
@@ -41,7 +41,7 @@ go-build-containerized:  $(BUILD_DIR) build-utility-image
 		-v $(PWD)/$(BUILD_DIR):/go/src/github.com/Mirantis/k8s-netchecker-server/$(BUILD_DIR) \
 		-w /go/src/github.com/Mirantis/k8s-netchecker-server/ \
 		$(UTILITY_IMAGE_NAME) bash -c '\
-			CGO_ENABLED=0 go build -x -o $(BUILD_DIR)/$(BIN_NAME) -ldflags "-s -w" $(glide novendor) &&\
+			CGO_ENABLED=0 go build -x -o $(BUILD_DIR)/$(BIN_NAME) -ldflags "-s -w" cmd/server.go &&\
 			chown -R $(shell id -u):$(shell id -u) $(BUILD_DIR)'
 
 build-release-image: go-build-containerized
@@ -50,4 +50,4 @@ build-release-image: go-build-containerized
 test-containerized: build-utility-image
 	docker run --rm \
 		-v $(PWD):/go/src/github.com/Mirantis/k8s-netchecker-server:ro \
-		$(UTILITY_IMAGE_NAME) go test -v $(glide novendor)
+		$(UTILITY_IMAGE_NAME) go test -v ./pkg/...

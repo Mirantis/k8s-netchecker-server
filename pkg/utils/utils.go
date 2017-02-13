@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"encoding/json"
@@ -65,7 +65,7 @@ func (ep *errProcessor) WriteBody(rw http.ResponseWriter, data []byte) {
 	}
 }
 
-func processRequest(r *http.Request, dst interface{}, rw http.ResponseWriter) error {
+func ProcessRequest(r *http.Request, dst interface{}, rw http.ResponseWriter) error {
 	ep := &errProcessor{}
 	body := ep.ReadBody(r)
 	ep.UnmarshalBytes(body, dst)
@@ -76,7 +76,7 @@ func processRequest(r *http.Request, dst interface{}, rw http.ResponseWriter) er
 	return ep.err
 }
 
-func processResponse(rw http.ResponseWriter, data interface{}) error {
+func ProcessResponse(rw http.ResponseWriter, data interface{}) error {
 	ep := &errProcessor{}
 	marshaled := ep.MarshalBytes(data)
 	ep.WriteBody(rw, marshaled)

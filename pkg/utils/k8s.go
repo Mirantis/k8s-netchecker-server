@@ -1,8 +1,6 @@
-package main
+package utils
 
 import (
-	"time"
-
 	"github.com/golang/glog"
 
 	"k8s.io/client-go/kubernetes"
@@ -16,29 +14,8 @@ const AgentLabelKey = "app"
 
 var AgentLabelValues = []string{"netchecker-agent", "netchecker-agent-hostnet"}
 
-type Checker interface {
-	Check() (absent, outdated []string, err error)
-}
-
 type KubeProxy struct {
 	Client kubernetes.Interface
-}
-
-type AgentChecker struct {
-	KubeProxy *KubeProxy
-}
-
-func NewAgentChecker(proxyInit bool) (*AgentChecker, error) {
-	if !proxyInit {
-		return &AgentChecker{}, nil
-	}
-
-	kProxy := &KubeProxy{}
-	err := kProxy.SetupClientSet()
-	if err != nil {
-		return nil, err
-	}
-	return &AgentChecker{KubeProxy: kProxy}, nil
 }
 
 func (kp *KubeProxy) SetupClientSet() error {
@@ -65,29 +42,4 @@ func (kp *KubeProxy) Pods() (*v1.PodList, error) {
 
 	pods, err := kp.Client.Core().Pods("").List(v1.ListOptions{LabelSelector: requirement.String()})
 	return pods, err
-}
-
-func (ac *AgentChecker) Check() ([]string, []string, error) {
-	absent := []string{}
-	outdated := []string{}
-
-	pods, err := ac.KubeProxy.Pods()
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, pod := range pods.Items {
-		agentName := pod.ObjectMeta.Name
-		agentData, exists := agentCache[agentName]
-		if !exists {
-			absent = append(absent, agentName)
-			continue
-		}
-
-		delta := time.Now().Sub(agentData.LastUpdated).Seconds()
-		if delta > float64(agentData.ReportInterval) {
-			outdated = append(outdated, agentName)
-		}
-	}
-
-	return absent, outdated, nil
 }
