@@ -14,6 +14,10 @@ const AgentLabelKey = "app"
 
 var AgentLabelValues = []string{"netchecker-agent", "netchecker-agent-hostnet"}
 
+type Proxy interface {
+	Pods() (*v1.PodList, error)
+}
+
 type KubeProxy struct {
 	Client kubernetes.Interface
 }

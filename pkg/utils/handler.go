@@ -1,0 +1,143 @@
+package utils
+
+import (
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/golang/glog"
+	"github.com/julienschmidt/httprouter"
+	"github.com/urfave/negroni"
+)
+
+type Handler struct {
+	AgentCache  map[string]AgentInfo
+	KubeClient  Proxy
+	HTTPHandler http.Handler
+}
+
+func NewHandler(createKubeClient bool) (*Handler, error) {
+	h := &Handler{AgentCache: map[string]AgentInfo{}}
+	h.SetupRouter()
+	h.AddMiddleware()
+
+	var err error
+	if createKubeClient {
+		kProxy := &KubeProxy{}
+		err = kProxy.SetupClientSet()
+	}
+
+	return h, err
+}
+
+func (h *Handler) SetupRouter() {
+	glog.V(10).Info("Setting up the url multiplexer")
+	router := httprouter.New()
+	router.POST("/api/v1/agents/:name", h.UpdateAgents)
+	router.GET("/api/v1/agents/:name", h.GetSingleAgent)
+	router.GET("/api/v1/agents/", h.GetAgents)
+	router.GET("/api/v1/connectivity_check", h.ConnectivityCheck)
+	h.HTTPHandler = router
+}
+
+func (h *Handler) AddMiddleware() {
+	n := negroni.New()
+	n.Use(negroni.NewLogger())
+	n.Use(negroni.NewRecovery())
+	n.UseHandler(h.HTTPHandler)
+	h.HTTPHandler = n
+}
+
+func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
+	agentData := AgentInfo{}
+	if err := ProcessRequest(r, &agentData, rw); err != nil {
+		return
+	}
+
+	agentData.LastUpdated = time.Now()
+	glog.V(10).Infof("Updating the agents cache with value: %v", agentData)
+	h.AgentCache[rp.ByName("name")] = agentData
+}
+
+func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	ProcessResponse(rw, h.AgentCache)
+}
+
+func (h *Handler) GetSingleAgent(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
+	aName := rp.ByName("name")
+	aData, exists := h.AgentCache[aName]
+	if !exists {
+		glog.V(5).Infof("Agent with name %v is not found in the cache", aName)
+		http.Error(rw, "There is no such entry in the agent cache", http.StatusNotFound)
+		return
+	}
+	ProcessResponse(rw, aData)
+}
+
+func (h *Handler) ConnectivityCheck(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	res := &CheckConnectivityInfo{
+		Message: fmt.Sprintf(
+			"All %v pods successfully reported back to the server",
+			len(h.AgentCache)),
+	}
+	status := http.StatusOK
+	errMsg := "Connectivity check fails. Reason: %v"
+
+	absent, outdated, err := h.CheckAgents()
+	if err != nil {
+		message := fmt.Sprintf(
+			"Error occured while checking the agents. Details: %v", err)
+		glog.Error(message)
+		http.Error(rw, message, http.StatusInternalServerError)
+		return
+	}
+
+	if len(absent) != 0 || len(outdated) != 0 {
+		glog.V(5).Infof(
+			"Absent|outdated agents detected. Absent -> %v; outdated -> %v",
+			absent, outdated,
+		)
+		res.Message = fmt.Sprintf(errMsg,
+			"there are absent or outdated pods; look up the payload")
+		res.Absent = absent
+		res.Outdated = outdated
+
+		status = http.StatusBadRequest
+	}
+
+	glog.V(10).Infof("Connectivity check result: %v", res)
+	glog.V(10).Infof("Connectivity check HTTP response status code: %v", status)
+
+	rw.WriteHeader(status)
+
+	ProcessResponse(rw, res)
+}
+
+func (h *Handler) CheckAgents() ([]string, []string, error) {
+	if h.KubeClient == nil {
+		return nil, nil, nil
+	}
+
+	absent := []string{}
+	outdated := []string{}
+
+	pods, err := h.KubeClient.Pods()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, pod := range pods.Items {
+		agentName := pod.ObjectMeta.Name
+		agentData, exists := h.AgentCache[agentName]
+		if !exists {
+			absent = append(absent, agentName)
+			continue
+		}
+
+		delta := time.Now().Sub(agentData.LastUpdated).Seconds()
+		if delta > float64(agentData.ReportInterval) {
+			outdated = append(outdated, agentName)
+		}
+	}
+
+	return absent, outdated, nil
+}
