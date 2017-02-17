@@ -16,5 +16,3 @@ type CheckConnectivityInfo struct {
 	Absent   []string `json="outdated,omitempty"`
 	Outdated []string `json="absent,omitempty"`
 }
-
-var AgentCache = make(map[string]AgentInfo)

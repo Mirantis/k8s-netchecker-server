@@ -17,12 +17,11 @@ func main() {
 
 	glog.V(5).Infof("Start listening on %v", endpoint)
 
-	checker, err := utils.NewAgentChecker(initKubeProxy)
+	handler, err := utils.NewHandler(initKubeProxy)
 	if err != nil {
-		glog.Errorf("Error while creating agent checker. Details: %v", err)
+		glog.Errorf("Error while setting up the handler. Details: %v", err)
 		panic(err.Error())
 	}
 
-	handler := utils.AddMiddleware(utils.SetupRouter(checker))
-	http.ListenAndServe(endpoint, handler)
+	http.ListenAndServe(endpoint, handler.HTTPHandler)
 }
