@@ -1,5 +1,5 @@
-hash: a311e4b8e33eb3d5bb3b1f46fdc86fe50702de1b4fa9ff1c511553143360b651
-updated: 2017-01-16T15:49:31.949093451+02:00
+hash: d396a4438aee8757e0aa61daeca1441d2a7c2eac309a207cec7bd61e65b27684
+updated: 2017-02-22T13:17:26.293693103+02:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -69,8 +69,6 @@ imports:
   - buffer
   - jlexer
   - jwriter
-- name: github.com/pborman/uuid
-  version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -78,11 +76,11 @@ imports:
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/ugorji/go
-  version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
+  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
   - codec
 - name: github.com/urfave/negroni
-  version: 46eece4d3b43dd330e141b20adf0ce9b2b35ba53
+  version: 3c4d1f44e5d9d1eb5acf3c661a17aaa837d1a067
 - name: golang.org/x/net
   version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
   subpackages:
@@ -128,8 +126,49 @@ imports:
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+- name: k8s.io/apimachinery
+  version: 7080e31e90e981181435294bca96c80a37db8941
+  subpackages:
+  - pkg/api/errors
+  - pkg/api/meta
+  - pkg/api/resource
+  - pkg/apimachinery
+  - pkg/apimachinery/announced
+  - pkg/apimachinery/registered
+  - pkg/apis/meta/v1
+  - pkg/apis/meta/v1/unstructured
+  - pkg/conversion
+  - pkg/conversion/queryparams
+  - pkg/fields
+  - pkg/labels
+  - pkg/openapi
+  - pkg/runtime
+  - pkg/runtime/schema
+  - pkg/runtime/serializer
+  - pkg/runtime/serializer/json
+  - pkg/runtime/serializer/protobuf
+  - pkg/runtime/serializer/recognizer
+  - pkg/runtime/serializer/streaming
+  - pkg/runtime/serializer/versioning
+  - pkg/selection
+  - pkg/types
+  - pkg/util/errors
+  - pkg/util/framer
+  - pkg/util/intstr
+  - pkg/util/json
+  - pkg/util/net
+  - pkg/util/rand
+  - pkg/util/runtime
+  - pkg/util/sets
+  - pkg/util/validation
+  - pkg/util/validation/field
+  - pkg/util/wait
+  - pkg/util/yaml
+  - pkg/version
+  - pkg/watch
+  - third_party/forked/golang/reflect
 - name: k8s.io/client-go
-  version: 24a02a6d7d2c9a21b12a3eb35c71c784e63825f4
+  version: 766a1c29837b97dc633e375cefe415804bbfd8e6
   subpackages:
   - discovery
   - discovery/fake
@@ -147,8 +186,8 @@ imports:
   - kubernetes/typed/batch/v1/fake
   - kubernetes/typed/batch/v2alpha1
   - kubernetes/typed/batch/v2alpha1/fake
-  - kubernetes/typed/certificates/v1alpha1
-  - kubernetes/typed/certificates/v1alpha1/fake
+  - kubernetes/typed/certificates/v1beta1
+  - kubernetes/typed/certificates/v1beta1/fake
   - kubernetes/typed/core/v1
   - kubernetes/typed/core/v1/fake
   - kubernetes/typed/extensions/v1beta1
@@ -157,18 +196,13 @@ imports:
   - kubernetes/typed/policy/v1beta1/fake
   - kubernetes/typed/rbac/v1alpha1
   - kubernetes/typed/rbac/v1alpha1/fake
+  - kubernetes/typed/rbac/v1beta1
+  - kubernetes/typed/rbac/v1beta1/fake
   - kubernetes/typed/storage/v1beta1
   - kubernetes/typed/storage/v1beta1/fake
   - pkg/api
-  - pkg/api/errors
   - pkg/api/install
-  - pkg/api/meta
-  - pkg/api/resource
   - pkg/api/v1
-  - pkg/api/validation/path
-  - pkg/apimachinery
-  - pkg/apimachinery/announced
-  - pkg/apimachinery/registered
   - pkg/apis/apps
   - pkg/apis/apps/install
   - pkg/apis/apps/v1beta1
@@ -187,69 +221,37 @@ imports:
   - pkg/apis/batch/v2alpha1
   - pkg/apis/certificates
   - pkg/apis/certificates/install
-  - pkg/apis/certificates/v1alpha1
+  - pkg/apis/certificates/v1beta1
   - pkg/apis/extensions
   - pkg/apis/extensions/install
   - pkg/apis/extensions/v1beta1
-  - pkg/apis/meta/v1
-  - pkg/apis/meta/v1/unstructured
   - pkg/apis/policy
   - pkg/apis/policy/install
   - pkg/apis/policy/v1beta1
   - pkg/apis/rbac
   - pkg/apis/rbac/install
   - pkg/apis/rbac/v1alpha1
+  - pkg/apis/rbac/v1beta1
   - pkg/apis/storage
   - pkg/apis/storage/install
   - pkg/apis/storage/v1beta1
-  - pkg/auth/user
-  - pkg/conversion
-  - pkg/conversion/queryparams
-  - pkg/fields
-  - pkg/genericapiserver/openapi/common
-  - pkg/labels
-  - pkg/runtime
-  - pkg/runtime/schema
-  - pkg/runtime/serializer
-  - pkg/runtime/serializer/json
-  - pkg/runtime/serializer/protobuf
-  - pkg/runtime/serializer/recognizer
-  - pkg/runtime/serializer/streaming
-  - pkg/runtime/serializer/versioning
-  - pkg/selection
-  - pkg/third_party/forked/golang/reflect
-  - pkg/third_party/forked/golang/template
-  - pkg/types
   - pkg/util
-  - pkg/util/cert
-  - pkg/util/clock
-  - pkg/util/errors
-  - pkg/util/flowcontrol
-  - pkg/util/framer
-  - pkg/util/integer
-  - pkg/util/intstr
-  - pkg/util/json
-  - pkg/util/jsonpath
   - pkg/util/labels
-  - pkg/util/net
   - pkg/util/parsers
-  - pkg/util/rand
-  - pkg/util/runtime
-  - pkg/util/sets
-  - pkg/util/uuid
-  - pkg/util/validation
-  - pkg/util/validation/field
-  - pkg/util/wait
-  - pkg/util/yaml
   - pkg/version
-  - pkg/watch
-  - pkg/watch/versioned
   - plugin/pkg/client/auth
   - plugin/pkg/client/auth/gcp
   - plugin/pkg/client/auth/oidc
   - rest
+  - rest/watch
   - testing
+  - third_party/forked/golang/template
   - tools/clientcmd/api
   - tools/metrics
   - transport
+  - util/cert
+  - util/clock
+  - util/flowcontrol
+  - util/integer
+  - util/jsonpath
 testImports: []

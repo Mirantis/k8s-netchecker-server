@@ -6,7 +6,10 @@ import:
   subpackages:
   - kubernetes
   - pkg/api/v1
+  - rest
+- package: k8s.io/apimachinery
+  subpackages:
   - pkg/labels
   - pkg/selection
-  - rest
--package: github.com/urfare/negroni
+  - pkg/apis/meta/v1
+-package: github.com/urfave/negroni
