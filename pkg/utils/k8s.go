@@ -3,10 +3,11 @@ package utils
 import (
 	"github.com/golang/glog"
 
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/labels"
-	"k8s.io/client-go/pkg/selection"
 	"k8s.io/client-go/rest"
 )
 
@@ -44,6 +45,6 @@ func (kp *KubeProxy) Pods() (*v1.PodList, error) {
 	}
 	glog.V(10).Infof("Selector for kubernetes pods: %v", requirement.String())
 
-	pods, err := kp.Client.Core().Pods("").List(v1.ListOptions{LabelSelector: requirement.String()})
+	pods, err := kp.Client.Core().Pods("").List(meta_v1.ListOptions{LabelSelector: requirement.String()})
 	return pods, err
 }

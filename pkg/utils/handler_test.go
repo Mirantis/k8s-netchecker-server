@@ -13,6 +13,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -215,21 +216,21 @@ func TestGetSingleAgent(t *testing.T) {
 func CSwithPods() kubernetes.Interface {
 	return fake.NewSimpleClientset(
 		&v1.Pod{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: meta_v1.ObjectMeta{
 				Name:      "agent-pod",
 				Labels:    map[string]string{"app": AgentLabelValues[0]},
 				Namespace: v1.NamespaceDefault,
 			},
 		},
 		&v1.Pod{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: meta_v1.ObjectMeta{
 				Name:      "agent-pod-hostnet",
 				Labels:    map[string]string{"app": AgentLabelValues[0]},
 				Namespace: v1.NamespaceDefault,
 			},
 		},
 		&v1.Pod{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: meta_v1.ObjectMeta{
 				Name:      "agent-pod-test",
 				Labels:    map[string]string{"app": "test"},
 				Namespace: v1.NamespaceDefault,
