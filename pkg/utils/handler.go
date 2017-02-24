@@ -34,9 +34,9 @@ func (h *Handler) SetupRouter() {
 	glog.V(10).Info("Setting up the url multiplexer")
 	router := httprouter.New()
 	router.POST("/api/v1/agents/:name", h.UpdateAgents)
-	router.GET("/api/v1/agents/:name", h.GetSingleAgent)
-	router.GET("/api/v1/agents/", h.GetAgents)
-	router.GET("/api/v1/connectivity_check", h.ConnectivityCheck)
+	router.GET("/api/v1/agents/:name", h.CleanCache(h.GetSingleAgent))
+	router.GET("/api/v1/agents/", h.CleanCache(h.GetAgents))
+	router.GET("/api/v1/connectivity_check", h.CleanCache(h.ConnectivityCheck))
 	h.HTTPHandler = router
 }
 
@@ -140,4 +140,39 @@ func (h *Handler) CheckAgents() ([]string, []string, error) {
 	}
 
 	return absent, outdated, nil
+}
+
+func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
+	return func(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
+		if h.KubeClient != nil {
+			pods, err := h.KubeClient.Pods()
+			if err != nil {
+				msg := fmt.Sprintf("Failed to get pods from k8s cluster. Details: %v", err)
+				glog.Error(msg)
+				http.Error(rw, msg, http.StatusInternalServerError)
+				return
+			}
+
+			type empty struct{}
+
+			podMap := make(map[string]empty)
+			toRemove := []string{}
+
+			for _, pod := range pods.Items {
+				podMap[pod.ObjectMeta.Name] = empty{}
+			}
+
+			for agentName, _ := range h.AgentCache {
+				if _, exists := podMap[agentName]; !exists {
+					toRemove = append(toRemove, agentName)
+				}
+			}
+
+			for _, agentName := range toRemove {
+				delete(h.AgentCache, agentName)
+			}
+		}
+
+		handle(rw, r, rp)
+	}
 }

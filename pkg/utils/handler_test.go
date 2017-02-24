@@ -172,7 +172,7 @@ func TestGetAgents(t *testing.T) {
 	}
 
 	router := httprouter.New()
-	router.GET("/api/v1/agents/", handler.GetAgents)
+	router.GET("/api/v1/agents/", handler.CleanCache(handler.GetAgents))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -213,6 +213,30 @@ func TestGetSingleAgent(t *testing.T) {
 	}
 }
 
+func TestGetSingleAgentCleanCache(t *testing.T) {
+	handler := newHandler()
+	handler.AgentCache["test"] = agentExample()
+	handler.AgentCache["agent-pod"] = agentExample()
+
+	handler.KubeClient = &KubeProxy{Client: CSwithPods()}
+
+	router := httprouter.New()
+	router.GET("/api/v1/agents/:name", handler.CleanCache(handler.GetSingleAgent))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/v1/agents/test")
+	if err != nil {
+		t.Errorf("Failed to GET agents' data from server. Details: %v", err)
+	}
+
+	readBodyBytesOrFail(resp, t)
+
+	if _, exists := handler.AgentCache["test"]; exists {
+		t.Errorf("Key %v should not be present in the cache", "test")
+	}
+}
+
 func CSwithPods() kubernetes.Interface {
 	return fake.NewSimpleClientset(
 		&v1.Pod{
@@ -241,7 +265,7 @@ func CSwithPods() kubernetes.Interface {
 
 func createCnntyCheckTestServer(handler *Handler) *httptest.Server {
 	router := httprouter.New()
-	router.GET("/api/v1/connectivity_check", handler.ConnectivityCheck)
+	router.GET("/api/v1/connectivity_check", handler.CleanCache(handler.ConnectivityCheck))
 	return httptest.NewServer(router)
 }
 
@@ -344,7 +368,7 @@ func TestConnectivityCheckFailDueError(t *testing.T) {
 	actual := string(bData)
 
 	failMsg := fmt.Sprintf(
-		"Error occured while checking the agents. Details: test error\n")
+		"Failed to get pods from k8s cluster. Details: test error\n")
 
 	if actual != failMsg {
 		t.Errorf(
