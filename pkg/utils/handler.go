@@ -18,14 +18,18 @@ type Handler struct {
 
 func NewHandler(createKubeClient bool) (*Handler, error) {
 	h := &Handler{AgentCache: map[string]AgentInfo{}}
-	h.SetupRouter()
-	h.AddMiddleware()
 
 	var err error
 	if createKubeClient {
 		kProxy := &KubeProxy{}
 		err = kProxy.SetupClientSet()
+		if err == nil {
+			h.KubeClient = kProxy
+		}
 	}
+
+	h.SetupRouter()
+	h.AddMiddleware()
 
 	return h, err
 }
