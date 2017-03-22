@@ -1,6 +1,11 @@
+sudo: required
+services:
+  - docker
 language: go
 go:
-    - 1.7.x
-before_install: mkdir $GOPATH/bin && curl https://glide.sh/get | sh
-install: make get-deps
-script: make test-local
+  - 1.7.x
+install:
+  - make get-deps
+script:
+  - make unit
+  - make docker-publish
