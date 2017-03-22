@@ -2,7 +2,7 @@ app:
   name: netchecker-server
 
 image:
-  repository: quay.io/l23network/k8s-netchecker-server
+  repository: mirantis/k8s-netchecker-server
   tag: latest
   pullPolicy: Always
 

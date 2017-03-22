@@ -1,7 +1,0 @@
-FROM golang:1.7-alpine
-
-MAINTAINER Artem Roma <aroma@mirantis.com>
-
-RUN apk add --update bash
-
-WORKDIR /go/src/github.com/Mirantis/k8s-netchecker-server
