@@ -7,5 +7,5 @@ go:
 install:
   - make get-deps
 script:
-  - make unit
+  - make test
   - make docker-publish

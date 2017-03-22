@@ -34,18 +34,18 @@ function import-images {
 	docker save -o "${TMP_IMAGE_PATH}" \
 	"${IMAGE_REPO_SERVER}":"${IMAGE_TAG}" "${IMAGE_REPO_AGENT}":"${IMAGE_TAG}"
 
-    if [ ! -z "${MASTER_NAME}" ]; then
-      docker cp "${TMP_IMAGE_PATH}" "${MASTER_NAME}":/netchecker-all.tar
-      docker exec -ti "${MASTER_NAME}" docker load -i /netchecker-all.tar
-      docker exec -ti "${MASTER_NAME}" docker images
-    fi
+  if [ ! -z "${MASTER_NAME}" ]; then
+    docker cp "${TMP_IMAGE_PATH}" "${MASTER_NAME}":/netchecker-all.tar
+    docker exec -ti "${MASTER_NAME}" docker load -i /netchecker-all.tar
+    docker exec -ti "${MASTER_NAME}" docker images
+  fi
 
-    for node in $(seq 1 "${NUM_NODES}"); do
-      docker cp "${TMP_IMAGE_PATH}" "${SLAVE_NAME}""${node}":/netchecker-all.tar
-      docker exec -ti "${SLAVE_NAME}""${node}" docker load -i /netchecker-all.tar
-      docker exec -ti "${SLAVE_NAME}""${node}" docker images
-    done
-    echo "Finished copying docker images to dind nodes"
+  for node in $(seq 1 "${NUM_NODES}"); do
+    docker cp "${TMP_IMAGE_PATH}" "${SLAVE_NAME}""${node}":/netchecker-all.tar
+    docker exec -ti "${SLAVE_NAME}""${node}" docker load -i /netchecker-all.tar
+    docker exec -ti "${SLAVE_NAME}""${node}" docker images
+  done
+  echo "Finished copying docker images to dind nodes"
 }
 
 import-images
