@@ -25,8 +25,8 @@ NETCHECKER_BRANCH=${NETCHECKER_BRANCH:-master}
 
 function build-image-server-or-agent {
   if [ -z "${NETCHECKER_REPO}" ]; then
-  	echo "NETCHECKER_REPO is not set!"
-  	exit 1
+    echo "NETCHECKER_REPO is not set!"
+    exit 1
   else
       pushd "../" &> /dev/null
       if [ ! -d "${NETCHECKER_REPO}" ]; then

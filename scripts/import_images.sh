@@ -31,8 +31,8 @@ SLAVE_NAME=${SLAVE_NAME:-"kube-node-"}
 
 
 function import-images {
-	docker save -o "${TMP_IMAGE_PATH}" \
-	"${IMAGE_REPO_SERVER}":"${IMAGE_TAG}" "${IMAGE_REPO_AGENT}":"${IMAGE_TAG}"
+  docker save -o "${TMP_IMAGE_PATH}" \
+  "${IMAGE_REPO_SERVER}":"${IMAGE_TAG}" "${IMAGE_REPO_AGENT}":"${IMAGE_TAG}"
 
   if [ ! -z "${MASTER_NAME}" ]; then
     docker cp "${TMP_IMAGE_PATH}" "${MASTER_NAME}":/netchecker-all.tar
