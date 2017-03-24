@@ -29,11 +29,11 @@ function build-image-server-or-agent {
     echo "NETCHECKER_REPO is not set!"
     exit 1
   else
-      pushd "../" &> /dev/null
-      if [ ! -d "${NETCHECKER_REPO}" ]; then
-        git clone --branch "${NETCHECKER_BRANCH}" \
-            --depth 1 --single-branch "https://github.com/Mirantis/${NETCHECKER_REPO}.git"
-      fi
+    pushd "../" &> /dev/null
+    if [ ! -d "${NETCHECKER_REPO}" ]; then
+      git clone --branch "${NETCHECKER_BRANCH}" \
+          --depth 1 --single-branch "https://github.com/Mirantis/${NETCHECKER_REPO}.git"
+    fi
   fi
   pushd "./${NETCHECKER_REPO}" &> /dev/null
   make build-image
