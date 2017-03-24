@@ -104,7 +104,7 @@ func (h *Handler) ConnectivityCheck(rw http.ResponseWriter, r *http.Request, _ h
 	absent, outdated, err := h.CheckAgents()
 	if err != nil {
 		message := fmt.Sprintf(
-			"Error occured while checking the agents. Details: %v", err)
+			"Error occurred while checking the agents. Details: %v", err)
 		glog.Error(message)
 		http.Error(rw, message, http.StatusInternalServerError)
 		return

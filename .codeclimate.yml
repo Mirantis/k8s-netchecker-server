@@ -14,6 +14,13 @@ engines:
     enabled: true
   markdownlint:
     enabled: true
+  fixme:
+    enabled: true
+    config:
+      strings:
+      - FIXME
+      - BUG
+      - TODO
 ratings:
   paths:
     - "**.go"
