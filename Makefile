@@ -15,6 +15,9 @@
 
 IMAGE_REPO_SERVER ?= mirantis/k8s-netchecker-server
 IMAGE_REPO_AGENT ?= mirantis/k8s-netchecker-agent
+HELM_SERVER_PATH ?= helm-chart/netchecker-server
+HELM_AGENT_PATH ?= helm-chart/netchecker-agent
+HELM_SCRIPT_NAME ?= get_helm.sh
 # repo for biuld agent docker image
 NETCHECKER_REPO ?= k8s-netchecker-agent
 DOCKER_BUILD ?= no
@@ -109,6 +112,8 @@ clean:
 
 .PHONY: clean-k8s
 clean-k8s:
+	rm -f ./scripts/$(HELM_SCRIPT_NAME)
+	rm -rf $(HOME)/.helm
 	bash ./scripts/dind-cluster-$(DIND_CLUSTER_VERSION).sh clean
 	rm -f ./scripts/dind-cluster-$(DIND_CLUSTER_VERSION).sh
 	rm -rf $(HOME)/.kubeadm-dind-cluster
@@ -154,4 +159,5 @@ $(ENV_PREPARE_MARKER): build-image
 	NETCHECKER_REPO=$(NETCHECKER_REPO) bash ./scripts/build_image_server_or_agent.sh
 	bash ./scripts/kubeadm_dind_cluster.sh
 	IMAGE_REPO_SERVER=$(IMAGE_REPO_SERVER) IMAGE_REPO_AGENT=$(IMAGE_REPO_AGENT) bash ./scripts/import_images.sh
+	NETCHECKER_REPO=$(NETCHECKER_REPO) bash ./scripts/helm_install_and_deploy.sh
 	touch $(ENV_PREPARE_MARKER)
