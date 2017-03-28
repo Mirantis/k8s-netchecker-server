@@ -21,6 +21,7 @@ set -o nounset
 
 NETCHECKER_REPO=${NETCHECKER_REPO:-}
 NETCHECKER_BRANCH=${NETCHECKER_BRANCH:-master}
+BUILD_IMAGE_MARKER=${BUILD_IMAGE_MARKER:-.build-image.complete}
 
 
 function build-image-server-or-agent {
@@ -36,6 +37,7 @@ function build-image-server-or-agent {
   fi
   pushd "./${NETCHECKER_REPO}" &> /dev/null
   make build-image
+  rm -f ${BUILD_IMAGE_MARKER}
   popd &> /dev/null
   popd &> /dev/null
 }
