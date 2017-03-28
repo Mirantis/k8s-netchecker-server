@@ -22,6 +22,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
 	"github.com/urfave/negroni"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Handler struct {
@@ -55,6 +56,7 @@ func (h *Handler) SetupRouter() {
 	router.GET("/api/v1/agents/:name", h.CleanCache(h.GetSingleAgent))
 	router.GET("/api/v1/agents/", h.CleanCache(h.GetAgents))
 	router.GET("/api/v1/connectivity_check", h.CleanCache(h.ConnectivityCheck))
+	router.GET("/metrics", promhttp.Handler())
 	h.HTTPHandler = router
 }
 
