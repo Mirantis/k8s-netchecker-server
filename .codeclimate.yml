@@ -1,0 +1,33 @@
+engines:
+  gofmt:
+    enabled: true
+  golint:
+    enabled: true
+    #checks:
+    #  GoLint/Comments/DocComments:
+    #    enabled: false
+    #  GoLint/Imports/ImportDot:
+    #    enabled: false
+  govet:
+    enabled: true
+  shellcheck:
+    enabled: true
+  markdownlint:
+    enabled: true
+  fixme:
+    enabled: true
+    config:
+      strings:
+      - FIXME
+      - BUG
+      - TODO
+ratings:
+  paths:
+    - "**.go"
+    - "**.sh"
+    - "**.md"
+#exclude_paths:
+#  - "dir/dir/file.txt"
+#  - "dir/*"
+#  - spec/**/*
+#  - "**/vendor/**/*"

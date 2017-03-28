@@ -286,7 +286,7 @@ func createCnntyCheckTestServer(handler *Handler) *httptest.Server {
 func cnntyRespOrFail(serverURL string, expectedStatus int, t *testing.T) *http.Response {
 	res, err := http.Get(serverURL + "/api/v1/connectivity_check")
 	if err != nil {
-		t.Errorf("Failed to GET successfull connectivity check from server. Details: %v", err)
+		t.Errorf("Failed to GET successful connectivity check from server. Details: %v", err)
 	}
 	checkRespStatus(expectedStatus, res.StatusCode, t)
 	return res
@@ -298,7 +298,7 @@ func decodeCnntyRespOrFail(resp *http.Response, t *testing.T) *CheckConnectivity
 	err := decoder.Decode(info)
 	if err != nil {
 		t.Errorf(
-			"Failed to decode connectivity check successfull response body. Details: %v",
+			"Failed to decode connectivity check successful response body. Details: %v",
 			err)
 	}
 	return info
@@ -321,11 +321,11 @@ func TestConnectivityCheckSuccess(t *testing.T) {
 	defer ts.Close()
 
 	actual := decodeCnntyRespOrFail(cnntyRespOrFail(ts.URL, http.StatusOK, t), t)
-	successfullMsg := fmt.Sprintf(
+	successfulMsg := fmt.Sprintf(
 		"All %v pods successfully reported back to the server", len(handler.AgentCache))
-	if actual.Message != successfullMsg {
+	if actual.Message != successfulMsg {
 		t.Errorf(
-			"Unexpected message from successfull result payload. Actual: %v",
+			"Unexpected message from successful result payload. Actual: %v",
 			actual.Message)
 	}
 }
