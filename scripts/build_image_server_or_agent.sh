@@ -37,7 +37,7 @@ function build-image-server-or-agent {
   fi
   pushd "./${NETCHECKER_REPO}" &> /dev/null
   make build-image
-  rm -f ${BUILD_IMAGE_MARKER}
+  rm -f "${BUILD_IMAGE_MARKER}"
   popd &> /dev/null
   popd &> /dev/null
 }
