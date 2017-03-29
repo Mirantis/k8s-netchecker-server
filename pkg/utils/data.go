@@ -30,3 +30,10 @@ type CheckConnectivityInfo struct {
 	Absent   []string `json="outdated,omitempty"`
 	Outdated []string `json="absent,omitempty"`
 }
+
+type AgentMetrics struct {
+	Description   string
+	ErrorCount    int
+	ReportCount   int
+	LastUpdated   time.Time
+}

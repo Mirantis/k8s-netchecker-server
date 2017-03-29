@@ -196,3 +196,10 @@ func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
 		handle(rw, r, rp)
 	}
 }
+
+func (h *Handler) CollectAgentsMetrics() {
+	for {
+		time.Sleep(5 * time.Second)
+
+	}
+}

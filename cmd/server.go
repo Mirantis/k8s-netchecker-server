@@ -20,6 +20,7 @@ import (
 
 	"github.com/Mirantis/k8s-netchecker-server/pkg/utils"
 	"github.com/golang/glog"
+	"github.com/coreos/go-oidc/http"
 )
 
 func main() {
@@ -37,5 +38,6 @@ func main() {
 		panic(err.Error())
 	}
 
-	http.ListenAndServe(endpoint, handler.HTTPHandler)
+	go handler.CollectAgentsMetrics()
+	glog.Fatal(http.ListenAndServe(endpoint, handler.HTTPHandler))
 }
