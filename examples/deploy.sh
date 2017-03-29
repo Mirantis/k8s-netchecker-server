@@ -26,19 +26,18 @@ set -o errexit
 set -o nounset
 
 
+NS=${NS:-default}
+REAL_NS="--namespace=${1:-$NS}"
+KUBE_DIR=${KUBE_DIR:-.}
+KUBE_USER=${KUBE_USER:-}
+NODE_PORT=${NODE_PORT:-31081}
+PURGE=${PURGE:-false}
 SERVER_IMAGE_NAME=${SERVER_IMAGE_NAME:-mirantis/k8s-netchecker-server}
 AGENT_IMAGE_NAME=${AGENT_IMAGE_NAME:-mirantis/k8s-netchecker-agent}
 IMAGE_TAG=${IMAGE_TAG:-latest}
-NODE_PORT=${NODE_PORT:-31081}
-KUBE_USER=${KUBE_USER:-}
-KUBE_DIR=${KUBE_DIR:-./}
 
 
-if [ -n "$1" ] || [ -n "${NS}" ]; then
-  NS="--namespace=${1:-NS}"
-fi
-
-if [ "${KUBE_DIR}" != "./" ] && [ -n "${KUBE_USER}" ]; then
+if [ "${KUBE_DIR}" != "." ] && [ -n "${KUBE_USER}" ]; then
   mkdir -p "${KUBE_DIR}"
 fi
 
@@ -56,7 +55,7 @@ metadata:
 spec:
   containers:
     - name: netchecker-server
-      image: "${SERVER_IMAGE_NAME}":"${IMAGE_TAG}"
+      image: ${SERVER_IMAGE_NAME}:${IMAGE_TAG}
       imagePullPolicy: Always
       ports:
         - containerPort: 8081
@@ -81,7 +80,7 @@ spec:
       protocol: TCP
       port: 8081
       targetPort: 8081
-      nodePort: "${NODE_PORT}"
+      nodePort: ${NODE_PORT}
   type: NodePort
 EOF
 
@@ -101,7 +100,7 @@ spec:
     spec:
       containers:
         - name: netchecker-agent
-          image: "${AGENT_IMAGE_NAME}":"${IMAGE_TAG}"
+          image: ${AGENT_IMAGE_NAME}:${IMAGE_TAG}
           env:
             - name: MY_POD_NAME
               valueFrom:
@@ -132,7 +131,7 @@ spec:
       hostNetwork: True
       containers:
         - name: netchecker-agent
-          image: "${AGENT_IMAGE_NAME}":"${IMAGE_TAG}"
+          image: ${AGENT_IMAGE_NAME}:${IMAGE_TAG}
           env:
             - name: MY_POD_NAME
               valueFrom:
@@ -146,22 +145,23 @@ spec:
           imagePullPolicy: Always
 EOF
 
-if [ "${KUBE_DIR}" != "./" ] && [ -n "${KUBE_USER}" ]; then
-  chown -R "${KUBE_USER}": "${KUBE_DIR}"
+if [ "${KUBE_DIR}" != "." ] && [ -n "${KUBE_USER}" ]; then
+  chown -R "${KUBE_USER}":"${KUBE_DIR}"
 fi
 
-kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-agent-ds.yml "${NS}" || true
-kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-agent-hostnet-ds.yml "${NS}" || true
-kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-server-svc.yml "${NS}" || true
-(kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-server-pod.yml "${NS}" && sleep 10) || true
+kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-agent-ds.yml "${REAL_NS}" || true
+kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-agent-hostnet-ds.yml "${REAL_NS}" || true
+kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-server-svc.yml "${REAL_NS}" || true
+(kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-server-pod.yml "${REAL_NS}" && sleep 10) || true
 
-if [ "${PURGE:-false}" != "true" ]; then
-  kubectl create -f "${KUBE_DIR}"/netchecker-server-pod.yml "${NS}"
-  kubectl create -f "${KUBE_DIR}"/netchecker-server-svc.yml "${NS}"
-  kubectl create -f "${KUBE_DIR}"/netchecker-agent-ds.yml "${NS}"
-  kubectl create -f "${KUBE_DIR}"/netchecker-agent-hostnet-ds.yml "${NS}"
+if [ "${PURGE}" != "true" ]; then
+  kubectl create -f "${KUBE_DIR}"/netchecker-server-pod.yml "${REAL_NS}"
+  kubectl create -f "${KUBE_DIR}"/netchecker-server-svc.yml "${REAL_NS}"
+  kubectl create -f "${KUBE_DIR}"/netchecker-agent-ds.yml "${REAL_NS}"
+  kubectl create -f "${KUBE_DIR}"/netchecker-agent-hostnet-ds.yml "${REAL_NS}"
 fi
 
+set +o xtrace
 echo "DONE"
 echo "Use the following commands to "
 echo "- check agents responses:"
