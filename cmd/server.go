@@ -20,7 +20,6 @@ import (
 
 	"github.com/Mirantis/k8s-netchecker-server/pkg/utils"
 	"github.com/golang/glog"
-	"github.com/coreos/go-oidc/http"
 )
 
 func main() {
