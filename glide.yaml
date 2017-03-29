@@ -12,4 +12,8 @@ import:
   - pkg/labels
   - pkg/selection
   - pkg/apis/meta/v1
--package: github.com/urfave/negroni
+- package: github.com/urfave/negroni
+- package: github.com/prometheus/client_golang
+  version: v0.8.0
+  subpackages:
+  - prometheus/promhttp
