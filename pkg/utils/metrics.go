@@ -27,15 +27,15 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 		PodName: ai.PodName,
 	}
 
-	suffix := "private-network"
+	suffix := "private_network"
 	if strings.Contains(ai.PodName, "hostnet") {
-		suffix = "host-network"
+		suffix = "host_network"
 	}
 	name_splitted := strings.Split(ai.PodName, "-")
 	name := name_splitted[len(name_splitted)-1]
 	am.gaugeErrorCount = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "Agent",
-		Name: fmt.Sprintf("agent_error_count_%s_%s", name, suffix),
+		Name: fmt.Sprintf("error_count_%s_%s", name, suffix),
 		Help: "Total number of errors (keepalive miss count) for the agent.",
 	})
 	am.gaugeReportCount = prometheus.NewGauge(prometheus.GaugeOpts{
