@@ -34,7 +34,10 @@ import (
 )
 
 func newHandler() *Handler {
-	return &Handler{AgentCache: map[string]AgentInfo{}}
+	return &Handler{
+		AgentCache: map[string]AgentInfo{},
+		Metrics: map[string]AgentMetrics{},
+	}
 }
 
 func agentExample() AgentInfo {
