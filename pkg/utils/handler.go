@@ -27,12 +27,16 @@ import (
 
 type Handler struct {
 	AgentCache  map[string]AgentInfo
+	Metrics     map[string]AgentMetrics
 	KubeClient  Proxy
 	HTTPHandler http.Handler
 }
 
 func NewHandler(createKubeClient bool) (*Handler, error) {
-	h := &Handler{AgentCache: map[string]AgentInfo{}}
+	h := &Handler{
+		AgentCache: map[string]AgentInfo{},
+		Metrics: map[string]AgentMetrics{},
+	}
 
 	var err error
 	if createKubeClient {
@@ -76,7 +80,11 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 
 	agentData.LastUpdated = time.Now()
 	glog.V(10).Infof("Updating the agents cache with value: %v", agentData)
-	h.AgentCache[rp.ByName("name")] = agentData
+	agent_name := rp.ByName("name")
+	if _, exists := h.AgentCache[agent_name]; !exists {
+		h.Metrics[agent_name] = NewAgentMetrics(&agentData)
+	}
+	h.AgentCache[agent_name] = agentData
 }
 
 func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {

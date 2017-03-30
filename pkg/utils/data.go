@@ -14,7 +14,11 @@
 
 package utils
 
-import "time"
+import (
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type AgentInfo struct {
 	ReportInterval int                 `json:"report_interval"`
@@ -32,8 +36,10 @@ type CheckConnectivityInfo struct {
 }
 
 type AgentMetrics struct {
-	Description   string
-	ErrorCount    int
-	ReportCount   int
-	LastUpdated   time.Time
+	gaugeErrorCount      prometheus.Gauge
+	gaugeReportCount     prometheus.Gauge
+	PodName              string
+	ErrorCount           int
+	ErrorsFromLastReport int
+	ReportCount          int
 }

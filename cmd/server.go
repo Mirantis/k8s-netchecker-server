@@ -37,6 +37,6 @@ func main() {
 		panic(err.Error())
 	}
 
-	go handler.CollectAgentsMetrics()
+	//go handler.CollectAgentsMetrics()
 	glog.Fatal(http.ListenAndServe(endpoint, handler.HTTPHandler))
 }

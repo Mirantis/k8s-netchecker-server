@@ -15,23 +15,39 @@
 package utils
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	gaugeNumberOfAgents = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "netcheck_num_agents",
-		Help: "Total number of agents in cluster.",
-	})
-	gaugeNumberOfHosts = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "netcheck_num_hosts",
-		Help: "Total number of hosts having agents in cluster.",
-	})
-)
+func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
+	am := AgentMetrics{
+		ReportCount: 1,
+		PodName: ai.PodName,
+	}
 
-func init() {
-	prometheus.MustRegister(gaugeNumberOfAgents)
-	prometheus.MustRegister(gaugeNumberOfHosts)
+	suffix := "private-network"
+	if strings.Contains(ai.PodName, "hostnet") {
+		suffix = "host-network"
+	}
+	name_splitted := strings.Split(ai.PodName, "-")
+	name := name_splitted[len(name_splitted)-1]
+	am.gaugeErrorCount = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "Agent",
+		Name: fmt.Sprintf("agent_error_count_%s_%s", name, suffix),
+		Help: "Total number of errors (keepalive miss count) for the agent.",
+	})
+	am.gaugeReportCount = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "Agent",
+		Name: fmt.Sprintf("agent_report_count_%s_%s", name, suffix),
+		Help: "Total number of reports (keepalive messages) from the agent.",
+	})
+
+	prometheus.MustRegister(am.gaugeErrorCount)
+	prometheus.MustRegister(am.gaugeReportCount)
+	am.Update()
+	return am
 }
 
 type Metrics struct {
@@ -40,6 +56,11 @@ type Metrics struct {
 }
 
 func (s *Metrics) Update() {
-	gaugeNumberOfAgents.Set(float64(s.numberOfAgents))
-	gaugeNumberOfHosts.Set(float64(s.numberOfHosts))
+	//gaugeNumberOfAgents.Set(float64(s.numberOfAgents))
+	//gaugeNumberOfHosts.Set(float64(s.numberOfHosts))
+}
+
+func (am *AgentMetrics) Update() {
+	am.gaugeErrorCount.Set(float64(am.ErrorCount))
+	am.gaugeReportCount.Set(float64(am.ReportCount))
 }
