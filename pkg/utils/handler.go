@@ -84,6 +84,7 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 	if _, exists := h.AgentCache[agent_name]; !exists {
 		h.Metrics[agent_name] = NewAgentMetrics(&agentData)
 	}
+	UpdateAgentMetrics(h.Metrics[agent_name], true, false)
 	h.AgentCache[agent_name] = agentData
 }
 
@@ -198,6 +199,7 @@ func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
 
 			for _, agentName := range toRemove {
 				delete(h.AgentCache, agentName)
+				delete(h.Metrics, agentName)
 			}
 		}
 
@@ -208,6 +210,14 @@ func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
 func (h *Handler) CollectAgentsMetrics() {
 	for {
 		time.Sleep(5 * time.Second)
-
+		for name, _ := range h.AgentCache {
+			if _, exists := h.Metrics[name]; exists {
+				deltaInIntervals := time.Now().Sub(h.AgentCache[name].LastUpdated).Seconds() /
+						float64(h.AgentCache[name].ReportInterval)
+				if int(deltaInIntervals) > h.Metrics[name].ErrorsFromLastReport {
+					UpdateAgentMetrics(h.Metrics[name], false, true)
+				}
+			}
+		}
 	}
 }

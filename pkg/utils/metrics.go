@@ -23,7 +23,6 @@ import (
 
 func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 	am := AgentMetrics{
-		ReportCount: 1,
 		PodName: ai.PodName,
 	}
 
@@ -46,21 +45,18 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 
 	prometheus.MustRegister(am.gaugeErrorCount)
 	prometheus.MustRegister(am.gaugeReportCount)
-	am.Update()
 	return am
 }
 
-type Metrics struct {
-	numberOfAgents int
-	numberOfHosts  int
-}
-
-func (s *Metrics) Update() {
-	//gaugeNumberOfAgents.Set(float64(s.numberOfAgents))
-	//gaugeNumberOfHosts.Set(float64(s.numberOfHosts))
-}
-
-func (am *AgentMetrics) Update() {
-	am.gaugeErrorCount.Set(float64(am.ErrorCount))
-	am.gaugeReportCount.Set(float64(am.ReportCount))
+func UpdateAgentMetrics(am AgentMetrics, report, error bool) {
+	if report {
+		am.ReportCount += 1
+		am.ErrorsFromLastReport = 0
+		am.gaugeReportCount.Set(float64(am.ReportCount))
+	}
+	if error {
+		am.ErrorCount += 1
+		am.ErrorsFromLastReport += 1
+		am.gaugeErrorCount.Set(float64(am.ErrorCount))
+	}
 }
