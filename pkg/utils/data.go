@@ -36,10 +36,8 @@ type CheckConnectivityInfo struct {
 }
 
 type AgentMetrics struct {
-	gaugeErrorCount      prometheus.Gauge
-	gaugeReportCount     prometheus.Gauge
+	ErrorCount           prometheus.Counter
+	ReportCount          prometheus.Counter
 	PodName              string
-	ErrorCount           int
 	ErrorsFromLastReport int
-	ReportCount          int
 }

@@ -32,31 +32,31 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 	}
 	name_splitted := strings.Split(ai.PodName, "-")
 	name := name_splitted[len(name_splitted)-1]
-	am.gaugeErrorCount = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "Agent",
-		Name: fmt.Sprintf("error_count_%s_%s", name, suffix),
+  am.ErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "ncagent",
+		Name: "error_count_total",
+    ConstLabels: prometheus.Labels{"agent": fmt.Sprintf("%s-%s", name, suffix)},
 		Help: "Total number of errors (keepalive miss count) for the agent.",
 	})
-	am.gaugeReportCount = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "Agent",
-		Name: fmt.Sprintf("agent_report_count_%s_%s", name, suffix),
+  am.ReportCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "ncagent",
+		Name: "report_count_total",
+    ConstLabels: prometheus.Labels{"agent": fmt.Sprintf("%s-%s", name, suffix)},
 		Help: "Total number of reports (keepalive messages) from the agent.",
 	})
 
-	prometheus.MustRegister(am.gaugeErrorCount)
-	prometheus.MustRegister(am.gaugeReportCount)
+	prometheus.MustRegister(am.ErrorCount)
+	prometheus.MustRegister(am.ReportCount)
 	return am
 }
 
 func UpdateAgentMetrics(am AgentMetrics, report, error bool) {
 	if report {
-		am.ReportCount += 1
+		am.ReportCount.Inc()
 		am.ErrorsFromLastReport = 0
-		am.gaugeReportCount.Set(float64(am.ReportCount))
 	}
 	if error {
-		am.ErrorCount += 1
+		am.ErrorCount.Inc()
 		am.ErrorsFromLastReport += 1
-		am.gaugeErrorCount.Set(float64(am.ErrorCount))
 	}
 }
