@@ -18,13 +18,15 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/api/unversioned"
-	"k8s.io/client-go/1.5/pkg/runtime"
-	"k8s.io/client-go/1.5/pkg/runtime/serializer"
-	"k8s.io/client-go/1.5/pkg/watch"
-	"k8s.io/client-go/1.5/rest"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/watch"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/rest"
 )
 
 func WrapClientsetWithExtensions(clientset *kubernetes.Clientset, config *rest.Config) (*WrappedClientset, error) {
@@ -42,7 +44,7 @@ func WrapClientsetWithExtensions(clientset *kubernetes.Clientset, config *rest.C
 func extensionClient(config *rest.Config) (*rest.RESTClient, error) {
 	config.APIPath = "/apis"
 	config.ContentConfig = rest.ContentConfig{
-		GroupVersion: &unversioned.GroupVersion{
+		GroupVersion: &schema.GroupVersion{
 			Group:   GroupName,
 			Version: Version,
 		},

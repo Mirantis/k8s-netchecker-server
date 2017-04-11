@@ -1,12 +1,12 @@
-ckage extensions
+package extensions
 
 import (
 	"strings"
 	"time"
 
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 func EnsureThirdPartyResourcesExist(ki kubernetes.Interface) error {
@@ -19,12 +19,12 @@ func EnsureThirdPartyResourcesExist(ki kubernetes.Interface) error {
 
 func RemoveThirdPartyResources(ki kubernetes.Interface) {
 	fullName := strings.Join([]string{"agents", GroupName}, ".")
-	ki.Extensions().ThirdPartyResources().Delete(fullName, &api.DeleteOptions{})
+	ki.Extensions().ThirdPartyResources().Delete(fullName, &meta_v1.DeleteOptions{})
 }
 
 func ensureThirdPartyResource(ki kubernetes.Interface, name string) error {
 	fullName := strings.Join([]string{name, GroupName}, ".")
-	_, err := ki.Extensions().ThirdPartyResources().Get(fullName)
+	_, err := ki.Extensions().ThirdPartyResources().Get(fullName, meta_v1.GetOptions{})
 	if err == nil {
 		return nil
 	}
@@ -46,7 +46,7 @@ func WaitThirdPartyResources(ext ExtensionsClientset, timeout time.Duration, int
 		case <-timeoutChan:
 			return err
 		case <-intervalChan:
-			_, err = ext.Agents().List(api.ListOptions{})
+			_, err = ext.Agents().List(meta_v1.ListOptions{})
 			if err != nil {
 				continue
 			}
