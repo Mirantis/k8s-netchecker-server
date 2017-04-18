@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -86,7 +85,7 @@ func decodeResponseInto(resp []byte, obj interface{}) error {
 func (c *AgentsClient) Create(agent *Agent) (result *Agent, err error) {
 	result = &Agent{}
 	resp, err := c.client.Post().
-		Namespace("default").
+		Namespace(api.NamespaceDefault).
 		Resource("agents").
 		Body(agent).
 		DoRaw()
@@ -99,7 +98,7 @@ func (c *AgentsClient) Create(agent *Agent) (result *Agent, err error) {
 func (c *AgentsClient) List(opts api.ListOptions) (result *AgentList, err error) {
 	result = &AgentList{}
 	resp, err := c.client.Get().
-		Namespace("default").
+		Namespace(api.NamespaceDefault).
 		Resource("agents").
 		LabelsSelectorParam(opts.LabelSelector).
 		DoRaw()
@@ -111,7 +110,7 @@ func (c *AgentsClient) List(opts api.ListOptions) (result *AgentList, err error)
 
 func (c *AgentsClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 	return c.client.Get().
-		Namespace("default").
+		Namespace(api.NamespaceDefault).
 		Prefix("watch").
 		Resource("agents").
 		VersionedParams(&opts, api.ParameterCodec).
@@ -121,7 +120,7 @@ func (c *AgentsClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 func (c *AgentsClient) Update(agent *Agent) (result *Agent, err error) {
 	result = &Agent{}
 	resp, err := c.client.Put().
-		Namespace("default").
+		Namespace(api.NamespaceDefault).
 		Resource("agents").
 		Name(agent.Metadata.Name).
 		Body(agent).
@@ -134,7 +133,7 @@ func (c *AgentsClient) Update(agent *Agent) (result *Agent, err error) {
 
 func (c *AgentsClient) Delete(name string, options *api.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace("default").
+		Namespace(api.NamespaceDefault).
 		Resource("agents").
 		Name(name).
 		Body(options).
@@ -145,7 +144,7 @@ func (c *AgentsClient) Delete(name string, options *api.DeleteOptions) error {
 func (c *AgentsClient) Get(name string) (result *Agent, err error) {
 	result = &Agent{}
 	resp, err := c.client.Get().
-		Namespace("default").
+		Namespace(api.NamespaceDefault).
 		Resource("agents").
 		Name(name).
 		DoRaw()
