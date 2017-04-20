@@ -22,16 +22,21 @@ import (
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
 	"github.com/urfave/negroni"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Handler struct {
 	AgentCache  map[string]AgentInfo
+	Metrics     map[string]AgentMetrics
 	KubeClient  Proxy
 	HTTPHandler http.Handler
 }
 
 func NewHandler(createKubeClient bool) (*Handler, error) {
-	h := &Handler{AgentCache: map[string]AgentInfo{}}
+	h := &Handler{
+		AgentCache: map[string]AgentInfo{},
+		Metrics: map[string]AgentMetrics{},
+	}
 
 	var err error
 	if createKubeClient {
@@ -55,6 +60,7 @@ func (h *Handler) SetupRouter() {
 	router.GET("/api/v1/agents/:name", h.CleanCache(h.GetSingleAgent))
 	router.GET("/api/v1/agents/", h.CleanCache(h.GetAgents))
 	router.GET("/api/v1/connectivity_check", h.CleanCache(h.ConnectivityCheck))
+	router.Handler("GET", "/metrics", promhttp.Handler())
 	h.HTTPHandler = router
 }
 
@@ -74,7 +80,12 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 
 	agentData.LastUpdated = time.Now()
 	glog.V(10).Infof("Updating the agents cache with value: %v", agentData)
-	h.AgentCache[rp.ByName("name")] = agentData
+	agent_name := rp.ByName("name")
+	if _, exists := h.AgentCache[agent_name]; !exists {
+		h.Metrics[agent_name] = NewAgentMetrics(&agentData)
+	}
+	UpdateAgentMetrics(h.Metrics[agent_name], true, false)
+	h.AgentCache[agent_name] = agentData
 }
 
 func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -188,9 +199,25 @@ func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
 
 			for _, agentName := range toRemove {
 				delete(h.AgentCache, agentName)
+				delete(h.Metrics, agentName)
 			}
 		}
 
 		handle(rw, r, rp)
+	}
+}
+
+func (h *Handler) CollectAgentsMetrics() {
+	for {
+		time.Sleep(5 * time.Second)
+		for name, _ := range h.AgentCache {
+			if _, exists := h.Metrics[name]; exists {
+				deltaInIntervals := time.Now().Sub(h.AgentCache[name].LastUpdated).Seconds() /
+						float64(h.AgentCache[name].ReportInterval)
+				if int(deltaInIntervals) > h.Metrics[name].ErrorsFromLastReport {
+					UpdateAgentMetrics(h.Metrics[name], false, true)
+				}
+			}
+		}
 	}
 }
