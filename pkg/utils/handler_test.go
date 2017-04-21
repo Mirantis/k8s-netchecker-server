@@ -37,13 +37,14 @@ import (
 func newHandler() *Handler {
 	return &Handler{
 		AgentCache: map[string]AgentInfo{},
-		Metrics: map[string]AgentMetrics{},
+		Metrics:    map[string]AgentMetrics{},
 	}
 }
 
 func agentExample() AgentInfo {
 	return AgentInfo{
 		ReportInterval: 5,
+		NodeName:       "test-node",
 		PodName:        "test",
 		HostDate:       time.Now(),
 	}

@@ -20,8 +20,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// AgentInfo is payload structure for keepalive message received from agent.
 type AgentInfo struct {
 	ReportInterval int                 `json:"report_interval"`
+	NodeName       string              `json:"nodename"`
 	PodName        string              `json:"podname"`
 	HostDate       time.Time           `json:"hostdate"`
 	LastUpdated    time.Time           `json:"last_updated"`
@@ -29,12 +31,16 @@ type AgentInfo struct {
 	IPs            map[string][]string `json:"ips"`
 }
 
+// CheckConnectivityInfo is payload structure for server answer to connectivity
+// check request.
 type CheckConnectivityInfo struct {
 	Message  string   `json="message"`
 	Absent   []string `json="outdated,omitempty"`
 	Outdated []string `json="absent,omitempty"`
 }
 
+// AgentMetrics contains Prometheus entities and agent data required for
+// reporting metrics for particular agent.
 type AgentMetrics struct {
 	ErrorCount           prometheus.Counter
 	ReportCount          prometheus.Counter

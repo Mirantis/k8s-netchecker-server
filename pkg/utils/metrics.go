@@ -33,16 +33,16 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 	name_splitted := strings.Split(ai.PodName, "-")
 	name := name_splitted[len(name_splitted)-1]
 	am.ErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "ncagent",
-		Name: "error_count_total",
-	ConstLabels: prometheus.Labels{"agent": fmt.Sprintf("%s-%s", name, suffix)},
-		Help: "Total number of errors (keepalive miss count) for the agent.",
+		Namespace:   "ncagent",
+		Name:        "error_count_total",
+		ConstLabels: prometheus.Labels{"agent": fmt.Sprintf("%s-%s", name, suffix)},
+		Help:        "Total number of errors (keepalive miss count) for the agent.",
 	})
 	am.ReportCount = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "ncagent",
-		Name: "report_count_total",
-	ConstLabels: prometheus.Labels{"agent": fmt.Sprintf("%s-%s", name, suffix)},
-		Help: "Total number of reports (keepalive messages) from the agent.",
+		Namespace:   "ncagent",
+		Name:        "report_count_total",
+		ConstLabels: prometheus.Labels{"agent": fmt.Sprintf("%s-%s", name, suffix)},
+		Help:        "Total number of reports (keepalive messages) from the agent.",
 	})
 
 	prometheus.MustRegister(am.ErrorCount)
