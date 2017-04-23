@@ -15,16 +15,22 @@
 package utils
 
 import (
-	"github.com/golang/glog"
+    "github.com/golang/glog"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/rest"
+    "github.com/Mirantis/k8s-netchecker-server/pkg/extensions"
+
+    meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/apimachinery/pkg/api/errors"
+    "k8s.io/apimachinery/pkg/labels"
+    "k8s.io/apimachinery/pkg/runtime"
+    "k8s.io/apimachinery/pkg/runtime/schema"
+    "k8s.io/apimachinery/pkg/runtime/serializer"
+    "k8s.io/apimachinery/pkg/selection"
+    "k8s.io/client-go/kubernetes"
+    "k8s.io/client-go/pkg/api"
+    "k8s.io/client-go/pkg/api/v1"
+    "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+    "k8s.io/client-go/rest"
 )
 
 const AgentLabelKey = "app"
@@ -80,6 +86,30 @@ func (kp *KubeProxy) initThirdParty() error {
 	}
 
 	return err
+}
+
+func configureClient(config *rest.Config) {
+    groupversion := schema.GroupVersion{
+        Group:   "network-checker.ext",
+        Version: "v1",
+    }
+
+    config.GroupVersion = &groupversion
+    config.APIPath = "/apis"
+    config.ContentType = runtime.ContentTypeJSON
+    config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
+
+    schemeBuilder := runtime.NewSchemeBuilder(
+        func(scheme *runtime.Scheme) error {
+            scheme.AddKnownTypes(
+                groupversion,
+                &extensions.Agent{},
+                &extensions.AgentList{},
+            )
+            return nil
+        })
+    meta_v1.AddToGroupVersion(api.Scheme, groupversion)
+    schemeBuilder.AddToScheme(api.Scheme)
 }
 
 func (kp *KubeProxy) Pods() (*v1.PodList, error) {
