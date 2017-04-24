@@ -214,7 +214,7 @@ func (h *Handler) CollectAgentsMetrics() {
 			if _, exists := h.Metrics[name]; exists {
 				deltaInIntervals := time.Now().Sub(h.AgentCache[name].LastUpdated).Seconds() /
 						float64(h.AgentCache[name].ReportInterval)
-				if int(deltaInIntervals) > h.Metrics[name].ErrorsFromLastReport {
+				if int(deltaInIntervals) > (h.Metrics[name].ErrorsFromLastReport + 1) {
 					UpdateAgentMetrics(h.Metrics[name], false, true)
 				}
 			}
