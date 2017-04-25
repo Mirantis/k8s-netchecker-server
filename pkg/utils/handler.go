@@ -40,10 +40,10 @@ func NewHandler(createKubeClient bool) (*Handler, error) {
 
 	var err error
 	if createKubeClient {
-		kProxy := &KubeProxy{}
-		err = kProxy.SetupClientSet()
+		proxy := &KubeProxy{}
+		err = proxy.SetupClientSet()
 		if err == nil {
-			h.KubeClient = kProxy
+			h.KubeClient = proxy
 		}
 		err = kProxy.initThirdParty()
 		if err != nil {
@@ -84,12 +84,12 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 
 	agentData.LastUpdated = time.Now()
 	glog.V(10).Infof("Updating the agents cache with value: %v", agentData)
-	agent_name := rp.ByName("name")
-	if _, exists := h.AgentCache[agent_name]; !exists {
-		h.Metrics[agent_name] = NewAgentMetrics(&agentData)
+	agentName := rp.ByName("name")
+	if _, exists := h.AgentCache[agentName]; !exists {
+		h.Metrics[agentName] = NewAgentMetrics(&agentData)
 	}
-	UpdateAgentMetrics(h.Metrics[agent_name], true, false)
-	h.AgentCache[agent_name] = agentData
+	UpdateAgentMetrics(h.Metrics[agentName], true, false)
+	h.AgentCache[agentName] = agentData
 }
 
 func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -195,7 +195,7 @@ func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
 				podMap[pod.ObjectMeta.Name] = empty{}
 			}
 
-			for agentName, _ := range h.AgentCache {
+			for agentName := range h.AgentCache {
 				if _, exists := podMap[agentName]; !exists {
 					toRemove = append(toRemove, agentName)
 				}
@@ -214,7 +214,7 @@ func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
 func (h *Handler) CollectAgentsMetrics() {
 	for {
 		time.Sleep(5 * time.Second)
-		for name, _ := range h.AgentCache {
+		for name := range h.AgentCache {
 			if _, exists := h.Metrics[name]; exists {
 				deltaInIntervals := time.Now().Sub(h.AgentCache[name].LastUpdated).Seconds() /
 					float64(h.AgentCache[name].ReportInterval)
