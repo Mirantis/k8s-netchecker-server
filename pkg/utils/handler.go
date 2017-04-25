@@ -21,8 +21,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
-	"github.com/urfave/negroni"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/urfave/negroni"
 )
 
 type Handler struct {
@@ -35,7 +35,7 @@ type Handler struct {
 func NewHandler(createKubeClient bool) (*Handler, error) {
 	h := &Handler{
 		AgentCache: map[string]AgentInfo{},
-		Metrics: map[string]AgentMetrics{},
+		Metrics:    map[string]AgentMetrics{},
 	}
 
 	var err error
