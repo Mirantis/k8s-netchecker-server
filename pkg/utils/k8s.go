@@ -17,13 +17,13 @@ package utils
 import (
 	"github.com/golang/glog"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
@@ -39,7 +39,6 @@ type KubeProxy struct {
 	Client kubernetes.Interface
 }
 
-
 func (kp *KubeProxy) SetupClientSet() error {
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -54,7 +53,6 @@ func (kp *KubeProxy) SetupClientSet() error {
 	kp.Client = clientSet
 	return nil
 }
-
 
 func (kp *KubeProxy) initThirdParty() error {
 	tpr, err := kp.Client.ExtensionsV1beta1().ThirdPartyResources().Get("agent.network-checker.ext", meta_v1.GetOptions{})
@@ -83,7 +81,6 @@ func (kp *KubeProxy) initThirdParty() error {
 
 	return err
 }
-
 
 func (kp *KubeProxy) Pods() (*v1.PodList, error) {
 	requirement, err := labels.NewRequirement(AgentLabelKey, selection.In, AgentLabelValues)

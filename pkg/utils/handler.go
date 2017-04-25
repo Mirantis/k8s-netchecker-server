@@ -45,7 +45,7 @@ func NewHandler(createKubeClient bool) (*Handler, error) {
 		if err == nil {
 			h.KubeClient = proxy
 		}
-		err = kProxy.initThirdParty()
+		err = proxy.initThirdParty()
 		if err != nil {
 			return nil, err
 		}

@@ -56,18 +56,17 @@ type AgentSpec struct {
 
 type Agent struct {
 	meta_v1.TypeMeta `json:",inline"`
-	Metadata meta_v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	Metadata         meta_v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec AgentSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 }
 
 type AgentList struct {
 	meta_v1.TypeMeta `json:",inline"`
-	Metadata meta_v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	Metadata         meta_v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []Agent `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
-
 
 func (e *Agent) GetObjectKind() schema.ObjectKind {
 	return &e.TypeMeta
@@ -85,16 +84,14 @@ func (el *AgentList) GetListMeta() meta_v1.List {
 	return &el.Metadata
 }
 
-
 type AgentCopy Agent
 type AgentListCopy AgentList
-
 
 func (e *Agent) UnmarshalJSON(data []byte) error {
 	tmp := AgentCopy{}
 	err := json.Unmarshal(data, &tmp)
 	if err != nil {
-			return err
+		return err
 	}
 	tmp2 := Agent(tmp)
 	*e = tmp2
@@ -105,7 +102,7 @@ func (el *AgentList) UnmarshalJSON(data []byte) error {
 	tmp := AgentListCopy{}
 	err := json.Unmarshal(data, &tmp)
 	if err != nil {
-			return err
+		return err
 	}
 	tmp2 := AgentList(tmp)
 	*el = tmp2
