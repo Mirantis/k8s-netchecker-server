@@ -30,8 +30,7 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 	if strings.Contains(ai.PodName, "hostnet") {
 		suffix = "host_network"
 	}
-	name_splitted := strings.Split(ai.PodName, "-")
-	name := name_splitted[len(name_splitted)-1]
+	name := ai.NodeName
 	am.ErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace:   "ncagent",
 		Name:        "error_count_total",
