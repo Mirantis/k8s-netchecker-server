@@ -9,6 +9,9 @@ import:
   - rest
 - package: k8s.io/apimachinery
   subpackages:
+  - pkg/apimachinery/announced
+  - pkg/runtime
+  - pkg/watch
   - pkg/labels
   - pkg/selection
   - pkg/apis/meta/v1
