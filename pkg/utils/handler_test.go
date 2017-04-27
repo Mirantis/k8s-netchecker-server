@@ -413,7 +413,7 @@ func TestConnectivityCheckFailDueError(t *testing.T) {
 	failMsg := fmt.Sprintf(
 		"Failed to get pods from k8s cluster. Details: test error\n")
 
-	if actual != failMsg {
+	if !strings.Contains(actual, failMsg) {
 		t.Errorf(
 			"Unexpected message from bad request result payload. Actual: %v",
 			actual)
