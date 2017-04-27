@@ -66,10 +66,9 @@ func tryRegister(m prometheus.Counter) (prometheus.Counter, bool) {
 			existing := are.ExistingCollector.(prometheus.Counter)
 			glog.V(5).Infof("Counter %v has been registered already.", existing.Desc())
 			return existing, false
-		} else {
-			// Something else went wrong!
-			panic(err)
 		}
+		// Something else went wrong!
+		panic(err)
 	}
 	return m, true
 }
