@@ -87,6 +87,7 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 	agentName := rp.ByName("name")
 	if _, exists := h.AgentCache[agentName]; !exists {
 		h.Metrics[agentName] = NewAgentMetrics(&agentData)
+		h.cleanCacheOnDemand(nil)
 	}
 	UpdateAgentMetrics(h.Metrics[agentName], true, false)
 	h.AgentCache[agentName] = agentData
@@ -175,37 +176,44 @@ func (h *Handler) CheckAgents() ([]string, []string, error) {
 	return absent, outdated, nil
 }
 
-func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
-	return func(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
-		if h.KubeClient != nil {
-			pods, err := h.KubeClient.Pods()
-			if err != nil {
-				msg := fmt.Sprintf("Failed to get pods from k8s cluster. Details: %v", err)
-				glog.Error(msg)
+func (h *Handler) cleanCacheOnDemand(rw http.ResponseWriter) {
+	if h.KubeClient != nil {
+		pods, err := h.KubeClient.Pods()
+		if err != nil {
+			msg := fmt.Sprintf("Failed to get pods from k8s cluster. Details: %v", err)
+			glog.Error(msg)
+			if rw != nil {
 				http.Error(rw, msg, http.StatusInternalServerError)
-				return
 			}
+			return
+		}
 
-			type empty struct{}
+		type empty struct{}
 
-			podMap := make(map[string]empty)
-			toRemove := []string{}
+		podMap := make(map[string]empty)
+		toRemove := []string{}
 
-			for _, pod := range pods.Items {
-				podMap[pod.ObjectMeta.Name] = empty{}
-			}
+		for _, pod := range pods.Items {
+			podMap[pod.ObjectMeta.Name] = empty{}
+		}
 
-			for agentName := range h.AgentCache {
-				if _, exists := podMap[agentName]; !exists {
-					toRemove = append(toRemove, agentName)
-				}
-			}
-
-			for _, agentName := range toRemove {
-				delete(h.AgentCache, agentName)
-				delete(h.Metrics, agentName)
+		for agentName := range h.AgentCache {
+			if _, exists := podMap[agentName]; !exists {
+				toRemove = append(toRemove, agentName)
 			}
 		}
+
+		glog.V(5).Infof("Data cache for agents %v is to be cleaned up.", toRemove)
+		for _, agentName := range toRemove {
+			delete(h.AgentCache, agentName)
+			delete(h.Metrics, agentName)
+		}
+	}
+}
+
+func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
+	return func(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
+		h.cleanCacheOnDemand(rw)
 
 		handle(rw, r, rp)
 	}
