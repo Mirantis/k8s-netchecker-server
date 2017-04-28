@@ -109,3 +109,7 @@ Deployment as helm chart: if users have
 [Helm](https://github.com/kubernetes/helm) installed on their K8S cluster
 they can build the chart from its description (`./helm-chart/`) and then deploy
 it (please, use Helm's documentation for details).
+
+## Additional documentation
+
+* [Metrics](doc/metrics.md) - metrics and Prometheus configuration how to.
