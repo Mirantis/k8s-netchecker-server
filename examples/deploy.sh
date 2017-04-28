@@ -102,6 +102,10 @@ spec:
         - name: netchecker-agent
           image: ${AGENT_IMAGE_NAME}:${IMAGE_TAG}
           env:
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: MY_POD_NAME
               valueFrom:
                 fieldRef:
@@ -133,6 +137,10 @@ spec:
         - name: netchecker-agent
           image: ${AGENT_IMAGE_NAME}:${IMAGE_TAG}
           env:
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: MY_POD_NAME
               valueFrom:
                 fieldRef:

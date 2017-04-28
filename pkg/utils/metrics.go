@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,8 +31,7 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 	if strings.Contains(ai.PodName, "hostnet") {
 		suffix = "host_network"
 	}
-	name_splitted := strings.Split(ai.PodName, "-")
-	name := name_splitted[len(name_splitted)-1]
+	name := ai.NodeName
 	am.ErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace:   "ncagent",
 		Name:        "error_count_total",
@@ -45,9 +45,32 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 		Help:        "Total number of reports (keepalive messages) from the agent.",
 	})
 
-	prometheus.MustRegister(am.ErrorCount)
-	prometheus.MustRegister(am.ReportCount)
+	if counter, ok := tryRegister(am.ErrorCount); !ok {
+		// use existing counter
+		am.ErrorCount = counter
+	}
+	if counter, ok := tryRegister(am.ReportCount); !ok {
+		// use existing counter
+		am.ReportCount = counter
+	}
+
 	return am
+}
+
+// returns true if registering went fine, false if counter was registered already,
+// panics on other register errors
+func tryRegister(m prometheus.Counter) (prometheus.Counter, bool) {
+	if err := prometheus.Register(m); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			// A counter for that metric has been registered before.
+			existing := are.ExistingCollector.(prometheus.Counter)
+			glog.V(5).Infof("Counter %v has been registered already.", existing.Desc())
+			return existing, false
+		}
+		// Something else went wrong!
+		panic(err)
+	}
+	return m, true
 }
 
 func UpdateAgentMetrics(am AgentMetrics, report, error bool) {
