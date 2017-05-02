@@ -368,7 +368,7 @@ func TestConnectivityCheckFail(t *testing.T) {
 	agent.PodName = "agent-pod-hostnet"
 	//back to the past
 	agent.LastUpdated = agent.HostDate.Add(
-		-time.Second * time.Duration(agent.ReportInterval+1))
+		-time.Second * time.Duration(agent.ReportInterval*2+1))
 
 	handler.AgentCache[agent.PodName] = agent
 

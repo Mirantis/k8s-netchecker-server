@@ -168,7 +168,7 @@ func (h *Handler) CheckAgents() ([]string, []string, error) {
 		}
 
 		delta := time.Now().Sub(agentData.LastUpdated).Seconds()
-		if delta > float64(agentData.ReportInterval) {
+		if delta > float64(agentData.ReportInterval*2) {
 			outdated = append(outdated, agentName)
 		}
 	}
