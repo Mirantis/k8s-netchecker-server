@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//   http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// WrapClientsetWithExtensions function
 func WrapClientsetWithExtensions(clientset *kubernetes.Clientset, config *rest.Config) (*WrappedClientset, error) {
 	restConfig := &rest.Config{}
 	*restConfig = *config
@@ -53,14 +54,17 @@ func extensionClient(config *rest.Config) (*rest.RESTClient, error) {
 	return rest.RESTClientFor(config)
 }
 
-type ExtensionsClientset interface {
+// Clientset interface
+type Clientset interface {
 	Agents() AgentsInterface
 }
 
+// WrappedClientset structure
 type WrappedClientset struct {
 	Client *rest.RESTClient
 }
 
+// AgentsInterface interface
 type AgentsInterface interface {
 	Create(*Agent) (*Agent, error)
 	Get(name string) (*Agent, error)
@@ -70,10 +74,12 @@ type AgentsInterface interface {
 	Delete(string, *api.DeleteOptions) error
 }
 
+// Agents function
 func (w *WrappedClientset) Agents() AgentsInterface {
 	return &AgentsClient{w.Client}
 }
 
+// AgentsClient structure
 type AgentsClient struct {
 	client *rest.RESTClient
 }
@@ -82,6 +88,7 @@ func decodeResponseInto(resp []byte, obj interface{}) error {
 	return json.NewDecoder(bytes.NewReader(resp)).Decode(obj)
 }
 
+// Create agent function
 func (c *AgentsClient) Create(agent *Agent) (result *Agent, err error) {
 	result = &Agent{}
 	resp, err := c.client.Post().
@@ -95,6 +102,7 @@ func (c *AgentsClient) Create(agent *Agent) (result *Agent, err error) {
 	return result, decodeResponseInto(resp, result)
 }
 
+// List agents function
 func (c *AgentsClient) List(opts api.ListOptions) (result *AgentList, err error) {
 	result = &AgentList{}
 	resp, err := c.client.Get().
@@ -108,6 +116,7 @@ func (c *AgentsClient) List(opts api.ListOptions) (result *AgentList, err error)
 	return result, decodeResponseInto(resp, result)
 }
 
+// Watch agents function
 func (c *AgentsClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 	return c.client.Get().
 		Namespace(api.NamespaceDefault).
@@ -117,6 +126,7 @@ func (c *AgentsClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 		Watch()
 }
 
+// Update agents function
 func (c *AgentsClient) Update(agent *Agent) (result *Agent, err error) {
 	result = &Agent{}
 	resp, err := c.client.Put().
@@ -131,6 +141,7 @@ func (c *AgentsClient) Update(agent *Agent) (result *Agent, err error) {
 	return result, decodeResponseInto(resp, result)
 }
 
+// Delete agent function
 func (c *AgentsClient) Delete(name string, options *api.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(api.NamespaceDefault).
@@ -141,6 +152,7 @@ func (c *AgentsClient) Delete(name string, options *api.DeleteOptions) error {
 		Error()
 }
 
+// Get agent function
 func (c *AgentsClient) Get(name string) (result *Agent, err error) {
 	result = &Agent{}
 	resp, err := c.client.Get().
@@ -153,4 +165,3 @@ func (c *AgentsClient) Get(name string) (result *Agent, err error) {
 	}
 	return result, decodeResponseInto(resp, result)
 }
-
