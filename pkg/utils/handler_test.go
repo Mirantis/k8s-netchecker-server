@@ -47,6 +47,7 @@ func agentExample() AgentInfo {
 		NodeName:       "test-node",
 		PodName:        "test",
 		HostDate:       time.Now(),
+		NetworkProbes:  []ProbeResult{{"0.0.0.0:8081", 50, 1, 0, 0, 0, 0}},
 	}
 }
 

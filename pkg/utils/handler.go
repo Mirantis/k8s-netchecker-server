@@ -64,6 +64,8 @@ func (h *Handler) SetupRouter() {
 	router.GET("/api/v1/agents/:name", h.CleanCache(h.GetSingleAgent))
 	router.GET("/api/v1/agents/", h.CleanCache(h.GetAgents))
 	router.GET("/api/v1/connectivity_check", h.CleanCache(h.ConnectivityCheck))
+	router.GET("/api/v1/ping", func(_ http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	})
 	router.Handler("GET", "/metrics", promhttp.Handler())
 	h.HTTPHandler = router
 }
