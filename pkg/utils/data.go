@@ -34,7 +34,8 @@ type AgentInfo struct {
 
 // ProbeResult structure for network probing results
 type ProbeResult struct {
-	EndPoint         string
+	URL              string
+	Result           int
 	Total            int
 	ContentTransfer  int
 	TCPConnection    int
