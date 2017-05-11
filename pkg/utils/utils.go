@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/golang/glog"
+	"io/ioutil"
 )
 
 type errProcessor struct {
@@ -32,11 +33,18 @@ func (ep *errProcessor) ReadBody(req *http.Request) []byte {
 		return nil
 	}
 	body := make([]byte, req.ContentLength)
-	n, err := req.Body.Read(body)
-	if n <= 0 && err != nil {
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		ep.err = errors.New(
 			fmt.Sprintf(
 				"Error while reading bytes from the request's body. Details: %v", err))
+	} else {
+		req.Body.Close()
+	}
+	if len(body) < int(req.ContentLength) {
+		ep.err = errors.New(
+			fmt.Sprintf("%v out of %v bytes were read from the request's body.",
+				len(body), req.ContentLength))
 	}
 	return body
 }
