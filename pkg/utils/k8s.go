@@ -45,19 +45,16 @@ type KubeProxy struct {
 	Client kubernetes.Interface
 }
 
-func (kp *KubeProxy) SetupClientSet() error {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return err
-	}
+func (kp *KubeProxy) SetupClientSet(config *rest.Config) (*kubernetes.Clientset, error) {
 	clientSet, err := kubernetes.NewForConfig(config)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	kp.Client = clientSet
-	return nil
+
+	return clientSet, nil
 }
 
 func (kp *KubeProxy) initThirdParty() error {
