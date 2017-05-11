@@ -19,10 +19,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Mirantis/k8s-netchecker-server/pkg/extensions"
+
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/negroni"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type Handler struct {
@@ -30,6 +35,7 @@ type Handler struct {
 	Metrics     map[string]AgentMetrics
 	KubeClient  Proxy
 	HTTPHandler http.Handler
+	ExtensionsClientset extensions.Clientset
 }
 
 func NewHandler(createKubeClient bool) (*Handler, error) {
@@ -39,16 +45,31 @@ func NewHandler(createKubeClient bool) (*Handler, error) {
 	}
 
 	var err error
+	var clientset *kubernetes.Clientset
+
 	if createKubeClient {
 		proxy := &KubeProxy{}
-		err = proxy.SetupClientSet()
+
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+
+		clientset, err = proxy.SetupClientSet(config)
 		if err == nil {
 			h.KubeClient = proxy
 		}
+
 		err = proxy.initThirdParty()
 		if err != nil {
 			return nil, err
 		}
+
+		ext, err := extensions.WrapClientsetWithExtensions(clientset, config)
+		if err != nil {
+			return nil, err
+		}
+		h.ExtensionsClientset = ext
 	}
 
 	h.SetupRouter()
@@ -79,6 +100,7 @@ func (h *Handler) AddMiddleware() {
 }
 
 func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
+	// update agents resource here
 	agentData := AgentInfo{}
 	if err := ProcessRequest(r, &agentData, rw); err != nil {
 		return
@@ -94,6 +116,7 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
 	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
 	h.AgentCache[agentName] = agentData
+	//h.ext.Agents().Update()
 }
 
 func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
