@@ -28,7 +28,21 @@ type AgentInfo struct {
 	HostDate       time.Time           `json:"hostdate"`
 	LastUpdated    time.Time           `json:"last_updated"`
 	LookupHost     map[string][]string `json:"nslookup"`
+	NetworkProbes  []ProbeResult       `json:"network_probes"`
 	IPs            map[string][]string `json:"ips"`
+}
+
+// ProbeResult structure for network probing results
+type ProbeResult struct {
+	URL              string
+	ConnectionResult int
+	HTTPCode         int
+	Total            int
+	ContentTransfer  int
+	TCPConnection    int
+	DNSLookup        int
+	Connect          int
+	ServerProcessing int
 }
 
 // CheckConnectivityInfo is payload structure for server answer to connectivity
