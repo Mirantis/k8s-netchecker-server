@@ -56,8 +56,16 @@ type CheckConnectivityInfo struct {
 // AgentMetrics contains Prometheus entities and agent data required for
 // reporting metrics for particular agent.
 type AgentMetrics struct {
-	ErrorCount           prometheus.Counter
-	ReportCount          prometheus.Counter
-	PodName              string
-	ErrorsFromLastReport int
+	ErrorCount            prometheus.Counter
+	ReportCount           prometheus.Counter
+	PodName               string
+	ErrorsFromLastReport  int
+	ProbeConnectionResult *prometheus.GaugeVec
+	ProbeHTTPCode         *prometheus.GaugeVec
+	ProbeTotal            *prometheus.GaugeVec
+	ProbeContentTransfer  *prometheus.GaugeVec
+	ProbeTCPConnection    *prometheus.GaugeVec
+	ProbeDNSLookup        *prometheus.GaugeVec
+	ProbeConnect          *prometheus.GaugeVec
+	ProbeServerProcessing *prometheus.GaugeVec
 }

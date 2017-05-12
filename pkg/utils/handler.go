@@ -91,7 +91,8 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 		h.Metrics[agentName] = NewAgentMetrics(&agentData)
 		h.cleanCacheOnDemand(nil)
 	}
-	UpdateAgentMetrics(h.Metrics[agentName], true, false)
+	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
+	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
 	h.AgentCache[agentName] = agentData
 }
 
@@ -229,7 +230,7 @@ func (h *Handler) CollectAgentsMetrics() {
 				deltaInIntervals := time.Now().Sub(h.AgentCache[name].LastUpdated).Seconds() /
 					float64(h.AgentCache[name].ReportInterval)
 				if int(deltaInIntervals) > (h.Metrics[name].ErrorsFromLastReport + 1) {
-					UpdateAgentMetrics(h.Metrics[name], false, true)
+					UpdateAgentBaseMetrics(h.Metrics[name], false, true)
 				}
 			}
 		}
