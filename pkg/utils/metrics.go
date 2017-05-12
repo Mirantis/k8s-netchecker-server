@@ -32,6 +32,7 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 		suffix = "host_network"
 	}
 	name := ai.NodeName
+
 	am.ErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace:   "ncagent",
 		Name:        "error_count_total",
@@ -45,21 +46,126 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 		Help:        "Total number of reports (keepalive messages) from the agent.",
 	})
 
-	if counter, ok := tryRegister(am.ErrorCount); !ok {
+	if counter, ok := tryRegisterCounter(am.ErrorCount); !ok {
 		// use existing counter
 		am.ErrorCount = counter
 	}
-	if counter, ok := tryRegister(am.ReportCount); !ok {
+	if counter, ok := tryRegisterCounter(am.ReportCount); !ok {
 		// use existing counter
 		am.ReportCount = counter
 	}
+
+  am.ProbeConnectionResult = prometheus.NewGaugeVec(
+    prometheus.GaugeOpts{
+      Namespace:   "ncagent",
+      Name:        "http_probe_connection_result",
+      Help:        "Connection result: 0 - error, 1 - success",
+    },
+    []string{"agent", "url"},
+  )
+  am.ProbeHTTPCode = prometheus.NewGaugeVec(
+    prometheus.GaugeOpts{
+      Namespace:   "ncagent",
+      Name:        "http_probe_code",
+      Help:        "HTTP status code.",
+    },
+    []string{"agent", "url"},
+  )
+  am.ProbeTotal = prometheus.NewGaugeVec(
+    prometheus.GaugeOpts{
+      Namespace:   "ncagent",
+      Name:        "http_probe_total_time_ms",
+      Help:        "The duration of total http request.",
+    },
+    []string{"agent", "url"},
+  )
+  am.ProbeContentTransfer = prometheus.NewGaugeVec(
+    prometheus.GaugeOpts{
+      Namespace:   "ncagent",
+      Name:        "http_probe_content_transfer_time_ms",
+      Help:        fmt.Sprint(
+                     "The duration of content transfer time, from the first ",
+                     "reponse byte till the end (in ms).",
+                   ),
+    },
+    []string{"agent", "url"},
+  )
+  am.ProbeTCPConnection = prometheus.NewGaugeVec(
+    prometheus.GaugeOpts{
+      Namespace:   "ncagent",
+      Name:        "http_probe_tcp_connection_time_ms",
+      Help:        "TCP establishing time in ms.",
+    },
+    []string{"agent", "url"},
+  )
+  am.ProbeDNSLookup = prometheus.NewGaugeVec(
+    prometheus.GaugeOpts{
+      Namespace:   "ncagent",
+      Name:        "http_probe_dns_lookup_time_ms",
+      Help:        "DNS lookup time in ms.",
+    },
+    []string{"agent", "url"},
+  )
+  am.ProbeConnect = prometheus.NewGaugeVec(
+    prometheus.GaugeOpts{
+      Namespace:   "ncagent",
+      Name:        "http_probe_connect_time_ms",
+      Help:        "Connection time in ms",
+    },
+    []string{"agent", "url"},
+  )
+  am.ProbeServerProcessing = prometheus.NewGaugeVec(
+    prometheus.GaugeOpts{
+      Namespace:   "ncagent",
+      Name:        "http_probe_server_processing_time_ms",
+      Help:        "Server processing time in ms.",
+    },
+    []string{"agent", "url"},
+  )
+
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeConnectionResult); !ok {
+    // use existing gauge
+    am.ProbeConnectionResult = gauge
+  }
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeHTTPCode); !ok {
+    // use existing gauge
+    am.ProbeHTTPCode = gauge
+  }
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeTotal); !ok {
+    // use existing gauge
+    am.ProbeTotal = gauge
+  }
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeContentTransfer); !ok {
+    // use existing gauge
+    am.ProbeContentTransfer = gauge
+  }
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeTCPConnection); !ok {
+    // use existing gauge
+    am.ProbeTCPConnection = gauge
+  }
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeTCPConnection); !ok {
+    // use existing gauge
+    am.ProbeTCPConnection = gauge
+  }
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeDNSLookup); !ok {
+    // use existing gauge
+    am.ProbeDNSLookup = gauge
+  }
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeConnect); !ok {
+    // use existing gauge
+    am.ProbeConnect = gauge
+  }
+  if gauge, ok := tryRegisterGaugeVec(am.ProbeServerProcessing); !ok {
+    // use existing gauge
+    am.ProbeServerProcessing = gauge
+  }
 
 	return am
 }
 
 // returns true if registering went fine, false if counter was registered already,
 // panics on other register errors
-func tryRegister(m prometheus.Counter) (prometheus.Counter, bool) {
+func tryRegisterCounter(m prometheus.Counter) (prometheus.Counter, bool) {
 	if err := prometheus.Register(m); err != nil {
 		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
 			// A counter for that metric has been registered before.
@@ -73,7 +179,21 @@ func tryRegister(m prometheus.Counter) (prometheus.Counter, bool) {
 	return m, true
 }
 
-func UpdateAgentMetrics(am AgentMetrics, report, error bool) {
+func tryRegisterGaugeVec(m *prometheus.GaugeVec) (*prometheus.GaugeVec, bool) {
+	if err := prometheus.Register(m); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			// A gauge for that metric has been registered before.
+			existing := are.ExistingCollector.(*prometheus.GaugeVec)
+			//glog.V(5).Infof("GaugeVec %v has been registered already.", existing.Desc())
+			return existing, false
+		}
+		// Something else went wrong!
+		panic(err)
+	}
+	return m, true
+}
+
+func UpdateAgentBaseMetrics(am AgentMetrics, report, error bool) {
 	if report {
 		am.ReportCount.Inc()
 		am.ErrorsFromLastReport = 0
@@ -82,4 +202,24 @@ func UpdateAgentMetrics(am AgentMetrics, report, error bool) {
 		am.ErrorCount.Inc()
 		am.ErrorsFromLastReport += 1
 	}
+}
+
+func UpdateAgentProbeMetrics(ai AgentInfo, am AgentMetrics) {
+
+  suffix := "private_network"
+  if strings.Contains(ai.PodName, "hostnet") {
+    suffix = "host_network"
+  }
+  name := fmt.Sprintf("%s-%s", ai.NodeName, suffix)
+
+  for _, pr := range ai.NetworkProbes {
+    am.ProbeConnectionResult.WithLabelValues(name, pr.URL).Set(pr.ConnectionResult)
+    am.ProbeHTTPCode.WithLabelValues(name, pr.URL).Set(pr.HTTPCode)
+    am.ProbeTotal.WithLabelValues(name, pr.URL).Set(pr.Total)
+    am.ProbeContentTransfer.WithLabelValues(name, pr.URL).Set(pr.ContentTransfer)
+    am.ProbeTCPConnection.WithLabelValues(name, pr.URL).Set(pr.TCPConnection)
+    am.ProbeDNSLookup.WithLabelValues(name, pr.URL).Set(pr.DNSLookup)
+    am.ProbeConnect.WithLabelValues(name, pr.URL).Set(pr.Connect)
+    am.ProbeServerProcessing.WithLabelValues(name, pr.URL).Set(pr.ServerProcessing)
+  }
 }

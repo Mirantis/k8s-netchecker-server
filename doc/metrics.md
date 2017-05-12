@@ -2,13 +2,30 @@
 
 ## Available metrics
 
+Basic metrics:
+
 * `go_*` - a set of default Go metrics provided by Prometheus library
 * `process_*` - a set of default Process metrics provided by Prometheus library
 * `ncagent_report_count_total` (label `agent`) - Counter. Number of total
-   reports from every agent (agents separated by label).
+  reports from every agent (agents separated by label).
 * `ncagent_error_count_total` (label `agent`) - Counter. Number of total errors
-   from every agent (agents separated by label). This counter is incremented
-   when agent does not report within `reporting_interval * 2` timeframe.
+  from every agent (agents separated by label). This counter is incremented
+  when agent does not report within `reporting_interval * 2` timeframe.
+
+HTTP probes metrics:
+
+* `http_probe_connection_result` - Gauge. Connection result: 0 - error,
+  1 - success.
+* `http_probe_code` - Gauge. HTTP status code, 0 if no HTTP response.
+* `http_probe_total_time_ms` - Gauge. Total duration of http request.
+* `http_probe_content_transfer_time_ms` - Gauge. The duration of content
+  transfer time from the first reponse byte till the end (in ms).
+* `http_probe_tcp_connection_time_ms` - Gauge. TCP establishing time
+  (in ms).
+* `http_probe_dns_lookup_time_ms` - Gauge. DNS lookup time (in ms).
+* `http_probe_connect_time_ms` - Gauge. Connection time in ms.
+* `http_probe_server_processing_time_ms` - Gauge. Server processing time
+  (in ms).
 
 ## Prometheus configuration example
 

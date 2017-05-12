@@ -35,14 +35,14 @@ type AgentInfo struct {
 // ProbeResult structure for network probing results
 type ProbeResult struct {
 	URL              string
-	ConnectionResult int
-	HTTPCode         int
-	Total            int
-	ContentTransfer  int
-	TCPConnection    int
-	DNSLookup        int
-	Connect          int
-	ServerProcessing int
+	ConnectionResult float64
+	HTTPCode         float64
+	Total            float64
+	ContentTransfer  float64
+	TCPConnection    float64
+	DNSLookup        float64
+	Connect          float64
+	ServerProcessing float64
 }
 
 // CheckConnectivityInfo is payload structure for server answer to connectivity
@@ -56,8 +56,16 @@ type CheckConnectivityInfo struct {
 // AgentMetrics contains Prometheus entities and agent data required for
 // reporting metrics for particular agent.
 type AgentMetrics struct {
-	ErrorCount           prometheus.Counter
-	ReportCount          prometheus.Counter
-	PodName              string
-	ErrorsFromLastReport int
+	ErrorCount            prometheus.Counter
+	ReportCount           prometheus.Counter
+	PodName               string
+	ErrorsFromLastReport  int
+  ProbeConnectionResult *prometheus.GaugeVec
+  ProbeHTTPCode         *prometheus.GaugeVec
+  ProbeTotal            *prometheus.GaugeVec
+  ProbeContentTransfer  *prometheus.GaugeVec
+  ProbeTCPConnection    *prometheus.GaugeVec
+  ProbeDNSLookup        *prometheus.GaugeVec
+  ProbeConnect          *prometheus.GaugeVec
+  ProbeServerProcessing *prometheus.GaugeVec
 }
