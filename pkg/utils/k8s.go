@@ -58,12 +58,12 @@ func (kp *KubeProxy) SetupClientSet(config *rest.Config) (*kubernetes.Clientset,
 }
 
 func (kp *KubeProxy) initThirdParty() error {
-	tpr, err := kp.Client.ExtensionsV1beta1().ThirdPartyResources().Get("agent.network-checker.ext", meta_v1.GetOptions{})
+	tpr, err := kp.Client.ExtensionsV1beta1().ThirdPartyResources().Get("agents.network-checker.ext", meta_v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			tpr := &v1beta1.ThirdPartyResource{
 				ObjectMeta: meta_v1.ObjectMeta{
-					Name: "agent.network-checker.ext",
+					Name: "agents.network-checker.ext",
 				},
 				Versions: []v1beta1.APIVersion{
 					{Name: "v1"},
@@ -85,28 +85,11 @@ func (kp *KubeProxy) initThirdParty() error {
 	return err
 }
 
-func configureClient(config *rest.Config) {
-	groupversion := schema.GroupVersion{
-		Group:   "network-checker.ext",
-		Version: "v1",
+func (kp *KubeProxy) buildConfig(kubeconfig string) (*rest.Config, error) {
+	if kubeconfig != "" {
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
 	}
-
-	config.GroupVersion = &groupversion
-	config.APIPath = "/apis"
-	config.ContentType = runtime.ContentTypeJSON
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
-
-	schemeBuilder := runtime.NewSchemeBuilder(
-		func(scheme *runtime.Scheme) error {
-			scheme.AddKnownTypes(
-				groupversion,
-				&extensions.Agent{},
-				&extensions.AgentList{},
-			)
-			return nil
-		})
-	meta_v1.AddToGroupVersion(api.Scheme, groupversion)
-	schemeBuilder.AddToScheme(api.Scheme)
+	return rest.InClusterConfig()
 }
 
 func (kp *KubeProxy) Pods() (*v1.PodList, error) {
