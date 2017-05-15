@@ -26,12 +26,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/negroni"
 
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
 type Handler struct {
-	AgentCache  map[string]AgentInfo
+	AgentCache  map[string]extensions.AgentSpec
 	Metrics     map[string]AgentMetrics
 	KubeClient  Proxy
 	HTTPHandler http.Handler
@@ -40,7 +41,7 @@ type Handler struct {
 
 func NewHandler(createKubeClient bool) (*Handler, error) {
 	h := &Handler{
-		AgentCache: map[string]AgentInfo{},
+		AgentCache: map[string]extensions.AgentSpec{},
 		Metrics:    map[string]AgentMetrics{},
 	}
 
@@ -100,14 +101,13 @@ func (h *Handler) AddMiddleware() {
 }
 
 func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
-	// update agents resource here
-	agentData := AgentInfo{}
+	agentData := extensions.AgentSpec{}
 	if err := ProcessRequest(r, &agentData, rw); err != nil {
 		return
 	}
 
 	agentData.LastUpdated = time.Now()
-	glog.V(10).Infof("Updating the agents cache with value: %v", agentData)
+	glog.V(10).Infof("Updating the agents resource with value: %v", agentData)
 	agentName := rp.ByName("name")
 	if _, exists := h.AgentCache[agentName]; !exists {
 		h.Metrics[agentName] = NewAgentMetrics(&agentData)
@@ -116,10 +116,17 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
 	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
 	h.AgentCache[agentName] = agentData
-	//h.ext.Agents().Update()
+
+	agent := &extensions.Agent{
+		Metadata: meta_v1.ObjectMeta{Name: agentName},
+		Spec: agentData,
+	}
+
+	h.ExtensionsClientset.Agents().Update(agent)
 }
 
 func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	//List
 	ProcessResponse(rw, h.AgentCache)
 }
 

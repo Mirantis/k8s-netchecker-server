@@ -47,11 +47,26 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 
 type AgentSpec struct {
 	ReportInterval int                 `json:"report_interval"`
+	NodeName       string              `json:"nodename"`
 	PodName        string              `json:"podname"`
 	HostDate       time.Time           `json:"hostdate"`
 	LastUpdated    time.Time           `json:"last_updated"`
 	LookupHost     map[string][]string `json:"nslookup"`
+	NetworkProbes  []ProbeResult       `json:"network_probes"`
 	IPs            map[string][]string `json:"ips"`
+}
+
+// ProbeResult structure for network probing results
+type ProbeResult struct {
+	URL              string
+	ConnectionResult int
+	HTTPCode         int
+	Total            int
+	ContentTransfer  int
+	TCPConnection    int
+	DNSLookup        int
+	Connect          int
+	ServerProcessing int
 }
 
 type Agent struct {
