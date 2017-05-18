@@ -17,17 +17,10 @@ package v1
 import (
     "time"
 
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const AgentResourcePlural = "agents"
-
-type Agent struct {
-    metav1.TypeMeta   `json:",inline"`
-    metav1.ObjectMeta `json:"metadata"`
-    Spec              AgentSpec   `json:"spec"`
-    Status            AgentStatus `json:"status,omitempty"`
-}
 
 type AgentSpec struct {
     ReportInterval int                 `json:"report_interval"`
@@ -54,7 +47,7 @@ type ProbeResult struct {
 }
 
 type AgentStatus struct {
-    State   AgentState `json:"state,omitempty"`
+    State   AgentState   `json:"state,omitempty"`
     Message string       `json:"message,omitempty"`
 }
 
@@ -65,8 +58,15 @@ const (
     AgentStateProcessed AgentState = "Processed"
 )
 
+type Agent struct {
+    meta_v1.TypeMeta   `json:",inline"`
+    meta_v1.ObjectMeta `json:"metadata"`
+    Spec               AgentSpec   `json:"spec"`
+    Status             AgentStatus `json:"status,omitempty"`
+}
+
 type AgentList struct {
-    metav1.TypeMeta `json:",inline"`
-    metav1.ListMeta `json:"metadata"`
-    Items           []Agent `json:"items"`
+    meta_v1.TypeMeta `json:",inline"`
+    meta_v1.ListMeta `json:"metadata"`
+    Items            []Agent `json:"items"`
 }

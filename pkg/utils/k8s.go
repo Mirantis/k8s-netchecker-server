@@ -17,19 +17,11 @@ package utils
 import (
 	"github.com/golang/glog"
 
-	"github.com/Mirantis/k8s-netchecker-server/pkg/extensions"
-
-	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 )
 
@@ -57,38 +49,10 @@ func (kp *KubeProxy) SetupClientSet(config *rest.Config) (*kubernetes.Clientset,
 	return clientSet, nil
 }
 
-func (kp *KubeProxy) initThirdParty() error {
-	tpr, err := kp.Client.ExtensionsV1beta1().ThirdPartyResources().Get("agents.network-checker.ext", meta_v1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			tpr := &v1beta1.ThirdPartyResource{
-				ObjectMeta: meta_v1.ObjectMeta{
-					Name: "agents.network-checker.ext",
-				},
-				Versions: []v1beta1.APIVersion{
-					{Name: "v1"},
-				},
-				Description: "Agent ThirdPartyResource",
-			}
-			result, err := kp.Client.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
-			if err != nil {
-				return err
-			}
-			glog.V(5).Infof("CREATED: %#v\nFROM: %#v\n", result, tpr)
-		} else {
-			return err
-		}
-	} else {
-		glog.V(5).Infof("SKIPPING: already exists %#v\n", tpr)
-	}
-
-	return err
-}
-
-func (kp *KubeProxy) buildConfig(kubeconfig string) (*rest.Config, error) {
-	if kubeconfig != "" {
+func (kp *KubeProxy) buildConfig() (*rest.Config, error) {
+	/*if kubeconfig != "" {
 		return clientcmd.BuildConfigFromFlags("", kubeconfig)
-	}
+	}*/
 	return rest.InClusterConfig()
 }
 

@@ -21,11 +21,11 @@ import (
 
     "k8s.io/apimachinery/pkg/fields"
     "k8s.io/apimachinery/pkg/runtime"
-    apiv1 "k8s.io/client-go/pkg/api/v1"
+    api_v1 "k8s.io/client-go/pkg/api/v1"
     "k8s.io/client-go/rest"
     "k8s.io/client-go/tools/cache"
 
-    agentv1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/agent/v1"
+    ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
 )
 
 // Watcher is an example of watching on resource create/update/delete events
@@ -36,12 +36,12 @@ type AgentController struct {
 
 // Run starts an Example resource controller
 func (c *AgentController) Run(ctx context.Context) error {
-    glog.V(5).Info("Watch Example objects")
+    glog.V(5).Info("Watch Agent objects")
 
     // Watch Example objects
     _, err := c.watchAgents(ctx)
     if err != nil {
-        glog.V(5).Infof("Failed to register watch for Example resource: %v\n", err)
+        glog.V(5).Infof("Failed to register watch for Agent resource: %v\n", err)
         return err
     }
 
@@ -52,15 +52,15 @@ func (c *AgentController) Run(ctx context.Context) error {
 func (c *AgentController) watchAgents(ctx context.Context) (cache.Controller, error) {
     source := cache.NewListWatchFromClient(
         c.AgentClient,
-        agentv1.AgentResourcePlural,
-        apiv1.NamespaceAll,
+        ext_v1.AgentResourcePlural,
+        api_v1.NamespaceAll,
         fields.Everything())
 
     _, controller := cache.NewInformer(
         source,
 
         // The object type.
-        &agentv1.Agent{},
+        &ext_v1.Agent{},
 
         // resyncPeriod
         // Every resyncPeriod, all resources in the cache will retrigger events.
@@ -79,11 +79,12 @@ func (c *AgentController) watchAgents(ctx context.Context) (cache.Controller, er
 }
 
 func (c *AgentController) onAdd(obj interface{}) {
-    agent := obj.(*agentv1.Agent)
+    agent := obj.(*ext_v1.Agent)
+
     glog.V(5).Infof("[CONTROLLER] OnAdd %s\n", agent.ObjectMeta.SelfLink)
 
     // NEVER modify objects from the store. It's a read-only, local cache.
-    // You can use agentScheme.Copy() to make a deep copy of original object and modify this copy
+    // You can use AgentScheme.Copy() to make a deep copy of original object and modify this copy
     // Or create a copy manually for better performance
     copyObj, err := c.AgentScheme.Copy(agent)
     if err != nil {
@@ -91,16 +92,16 @@ func (c *AgentController) onAdd(obj interface{}) {
         return
     }
 
-    agentCopy := copyObj.(*agentv1.Agent)
-    agentCopy.Status = agentv1.AgentStatus{
-        State:   agentv1.AgentStateProcessed,
+    agentCopy := copyObj.(*ext_v1.Agent)
+    agentCopy.Status = ext_v1.AgentStatus{
+        State:   ext_v1.AgentStateProcessed,
         Message: "Successfully processed by controller",
     }
 
     err = c.AgentClient.Put().
         Name(agent.ObjectMeta.Name).
         Namespace(agent.ObjectMeta.Namespace).
-        Resource(agentv1.AgentResourcePlural).
+        Resource(ext_v1.AgentResourcePlural).
         Body(agentCopy).
         Do().
         Error()
@@ -113,13 +114,15 @@ func (c *AgentController) onAdd(obj interface{}) {
 }
 
 func (c *AgentController) onUpdate(oldObj, newObj interface{}) {
-    oldExample := oldObj.(*agentv1.Agent)
-    newExample := newObj.(*agentv1.Agent)
+    oldExample := oldObj.(*ext_v1.Agent)
+    newExample := newObj.(*ext_v1.Agent)
+
     glog.V(5).Infof("[CONTROLLER] OnUpdate oldObj: %s\n", oldExample.ObjectMeta.SelfLink)
     glog.V(5).Infof("[CONTROLLER] OnUpdate newObj: %s\n", newExample.ObjectMeta.SelfLink)
 }
 
 func (c *AgentController) onDelete(obj interface{}) {
-    agent := obj.(*agentv1.Agent)
+    agent := obj.(*ext_v1.Agent)
+
     glog.V(5).Infof("[CONTROLLER] OnDelete %s\n", agent.ObjectMeta.SelfLink)
 }

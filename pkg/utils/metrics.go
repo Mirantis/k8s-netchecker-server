@@ -19,13 +19,13 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Mirantis/k8s-netchecker-server/pkg/extensions"
-
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+
+	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
 )
 
-func NewAgentMetrics(ai *extensions.AgentSpec) AgentMetrics {
+func NewAgentMetrics(ai *ext_v1.AgentSpec) AgentMetrics {
 	am := AgentMetrics{
 		PodName: ai.PodName,
 	}
