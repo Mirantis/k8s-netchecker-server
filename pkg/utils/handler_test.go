@@ -26,29 +26,30 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/Mirantis/k8s-netchecker-server/pkg/extensions"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
+
+	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
 )
 
 func newHandler() *Handler {
 	return &Handler{
-		AgentCache: map[string]extensions.AgentSpec{},
+		AgentCache: map[string]ext_v1.AgentSpec{},
 		Metrics:    map[string]AgentMetrics{},
 	}
 }
 
-func agentExample() extensions.AgentSpec {
-	return extensions.AgentSpec{
+func agentExample() ext_v1.AgentSpec {
+	return ext_v1.AgentSpec{
 		ReportInterval: 5,
 		NodeName:       "test-node",
 		PodName:        "test",
 		HostDate:       time.Now(),
-		NetworkProbes:  []extensions.ProbeResult{{"http://0.0.0.0:8081", 1, 200, 50, 1, 0, 0, 0, 0}},
+		NetworkProbes:  []ext_v1.ProbeResult{{"http://0.0.0.0:8081", 1, 200, 50, 1, 0, 0, 0, 0}},
 	}
 }
 
@@ -75,7 +76,7 @@ func readBodyBytesOrFail(resp *http.Response, t *testing.T) []byte {
 	return bData
 }
 
-func marshalExpectedWithActualDate(expected, actual extensions.AgentSpec, t *testing.T) []byte {
+func marshalExpectedWithActualDate(expected, actual ext_v1.AgentSpec, t *testing.T) []byte {
 	//time.Now() is always different
 	expected.LastUpdated = actual.LastUpdated
 

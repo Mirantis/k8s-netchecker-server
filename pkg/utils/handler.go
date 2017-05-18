@@ -15,39 +15,35 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/Mirantis/k8s-netchecker-server/pkg/extensions"
 
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/negroni"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-
-	agentv1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/agent/v1"
-	agentclient "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/client"
-	agentcontroller "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/controller"
+	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
+	ext_client "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/client"
+	ext_controller "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/controller"
 )
 
 type Handler struct {
-	AgentCache  map[string]extensions.AgentSpec
+	AgentCache  map[string]ext_v1.AgentSpec
 	Metrics     map[string]AgentMetrics
 	KubeClient  Proxy
 	HTTPHandler http.Handler
-	ExtensionsClientset extensions.Clientset
+	ExtensionsClientset ext_client.Clientset
 }
 
 func NewHandler(createKubeClient bool) (*Handler, error) {
 	h := &Handler{
-		AgentCache: map[string]extensions.AgentSpec{},
+		AgentCache: map[string]ext_v1.AgentSpec{},
 		Metrics:    map[string]AgentMetrics{},
 	}
 
@@ -57,7 +53,7 @@ func NewHandler(createKubeClient bool) (*Handler, error) {
 	if createKubeClient {
 		proxy := &KubeProxy{}
 
-		config, err := proxy.buildConfig(*kubeconfig)
+		config, err := proxy.buildConfig()
 		if err != nil {
 			return nil, err
 		}
@@ -67,15 +63,31 @@ func NewHandler(createKubeClient bool) (*Handler, error) {
 			h.KubeClient = proxy
 		}
 
-		err = proxy.initThirdParty()
+		err = ext_client.CreateAgentThirdPartyResource(clientset)
+		if err != nil && !api_errors.IsAlreadyExists(err) {
+			return nil, err
+		}
+
+		ext, err := ext_client.WrapClientsetWithExtensions(clientset, config)
+		if err != nil {
+			return nil, err
+		}
+		// wait until TPR gets processed
+		err = ext_client.WaitForAgentResource(ext.Client)
 		if err != nil {
 			return nil, err
 		}
 
-		ext, err := extensions.WrapClientsetWithExtensions(clientset, config)
-		if err != nil {
-			return nil, err
+		// start a controller on instances of our TPR
+		controller := ext_controller.AgentController{
+			AgentClient: ext.Client,
+			AgentScheme: ext.Scheme,
 		}
+
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
+		go controller.Run(ctx)
+
 		h.ExtensionsClientset = ext
 	}
 
@@ -87,6 +99,7 @@ func NewHandler(createKubeClient bool) (*Handler, error) {
 
 func (h *Handler) SetupRouter() {
 	glog.V(10).Info("Setting up the url multiplexer")
+
 	router := httprouter.New()
 	router.POST("/api/v1/agents/:name", h.UpdateAgents)
 	router.GET("/api/v1/agents/:name", h.CleanCache(h.GetSingleAgent))
@@ -107,19 +120,23 @@ func (h *Handler) AddMiddleware() {
 }
 
 func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
-	agentData := extensions.AgentSpec{}
+	agentData := ext_v1.AgentSpec{}
+
 	if err := ProcessRequest(r, &agentData, rw); err != nil {
 		return
 	}
 
 	agentData.LastUpdated = time.Now()
 	glog.V(10).Infof("Updating the agents resource with value: %v", agentData)
+
 	agentName := rp.ByName("name")
-	existing_agent, err := h.ExtensionsClientset.Agents().Get(agentName)
+	_, err := h.ExtensionsClientset.Agents().Get(agentName)
+
 	if err != nil {
 		glog.V(5).Info(err)
 	}
-	if existing_agent == nil {
+
+	if api_errors.IsNotFound(err) {
 		h.Metrics[agentName] = NewAgentMetrics(&agentData)
 		h.cleanCacheOnDemand(nil)
 	}
@@ -127,19 +144,36 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
 	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
 
-	agent := &extensions.Agent{
-		Metadata: meta_v1.ObjectMeta{Name: agentName},
+	agent := &ext_v1.Agent{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name: agentName,
+		},
 		Spec: agentData,
+		Status: ext_v1.AgentStatus{
+			State:   ext_v1.AgentStateCreated,
+			Message: "Created, not processed yet",
+		},
 	}
+
 	glog.V(5).Info("================== HERE ==================")
 	glog.V(5).Info(agent)
-	h.ExtensionsClientset.Agents().Update(agent)
+
+	agent, err = h.ExtensionsClientset.Agents().Update(agent)
+
+	if err != nil {
+		glog.V(5).Info(err)
+	}
+
+	err = ext_client.WaitForAgentInstanceProcessed(h.ExtensionsClientset, agentName)
+	if err != nil {
+		glog.V(5).Info(err)
+	}
 }
 
 func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	agentsData := map[string]extensions.AgentSpec{}
+	agentsData := map[string]ext_v1.AgentSpec{}
+	agents, err := h.ExtensionsClientset.Agents().List()
 
-	agents, err := h.ExtensionsClientset.Agents().List(api.ListOptions{})
 	if err != nil {
 		glog.V(5).Info(err)
 	}
@@ -147,10 +181,10 @@ func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httproute
 	for _, agent := range agents.Items {
 		glog.V(5).Info("================== HERE ==================")
 		glog.V(5).Info(agent)
-		agentsData[agent.Metadata.Name] = agent.Spec
+		agentsData[agent.ObjectMeta.Name] = agent.Spec
 	}
 
-	if err := ProcessResponse(rw, agentsData); err != nil {
+	if err = ProcessResponse(rw, agentsData); err != nil {
 		return
 	}
 }
@@ -158,18 +192,19 @@ func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httproute
 func (h *Handler) GetSingleAgent(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
 	agentName := rp.ByName("name")
 	agent, err := h.ExtensionsClientset.Agents().Get(agentName)
+
 	if err != nil {
 		glog.V(5).Info(err)
 		return
 	}
 
-	if agent == nil {
+	if api_errors.IsNotFound(err) {
 		glog.V(5).Infof("Agent with name %v is not found in the cache", agentName)
 		http.Error(rw, "There is no such entry in the agent cache", http.StatusNotFound)
 		return
 	}
 
-	if err := ProcessResponse(rw, agent); err != nil {
+	if err = ProcessResponse(rw, agent); err != nil {
 		return
 	}
 }

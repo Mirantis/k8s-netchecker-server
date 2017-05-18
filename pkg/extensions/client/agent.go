@@ -17,59 +17,61 @@ package client
 import (
     "time"
 
-    apierrors "k8s.io/apimachinery/pkg/api/errors"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    api_errors "k8s.io/apimachinery/pkg/api/errors"
+    meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/util/wait"
-    agentv1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/agent/v1"
     "k8s.io/client-go/kubernetes"
-    apiv1 "k8s.io/client-go/pkg/api/v1"
+    api_v1 "k8s.io/client-go/pkg/api/v1"
     "k8s.io/client-go/pkg/apis/extensions/v1beta1"
     "k8s.io/client-go/rest"
-    // Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
-    // _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+    ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
 )
 
-func CreateTPR(clientset kubernetes.Interface) error {
+
+// Create Agent Third party resource
+func CreateAgentThirdPartyResource(clientset kubernetes.Interface) error {
     agent := &v1beta1.ThirdPartyResource{
-        ObjectMeta: metav1.ObjectMeta{
-            Name: "agent." + agentv1.GroupName,
+        ObjectMeta: meta_v1.ObjectMeta{
+            Name: "agent." + ext_v1.GroupName,
         },
         Versions: []v1beta1.APIVersion{
-            {Name: agentv1.SchemeGroupVersion.Version},
+            {Name: ext_v1.SchemeGroupVersion.Version},
         },
         Description: "An Agent ThirdPartyResource",
     }
-    _, err := clientset.ExtensionsV1beta1().ThirdPartyResources().Create(agent)
+
+    _, err := clientset.ExtensionsV1beta1().
+            ThirdPartyResources().
+            Create(agent)
+
     return err
 }
 
-func WaitForAgentResource(agentClient *rest.RESTClient) error {
+func WaitForAgentResource(client *rest.RESTClient) error {
     return wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
-        _, err := agentClient.Get().
-            Resource(agentv1.AgentResourcePlural).
-            Namespace(apiv1.NamespaceDefault).
+        _, err := client.Get().
+            Namespace(api_v1.NamespaceDefault).
+            Resource(ext_v1.AgentResourcePlural).
             DoRaw()
 
         if err == nil {
             return true, nil
         }
-        if apierrors.IsNotFound(err) {
+
+        if api_errors.IsNotFound(err) {
             return false, nil
         }
+
         return false, err
     })
 }
 
-func WaitForAgentInstanceProcessed(exampleClient *rest.RESTClient, name string) error {
+func WaitForAgentInstanceProcessed(ext Clientset, name string) error {
     return wait.Poll(100*time.Millisecond, 10*time.Second, func() (bool, error) {
-        var agent agentv1.Agent
-        err := exampleClient.Get().
-            Resource(agentv1.AgentResourcePlural).
-            Namespace(apiv1.NamespaceDefault).
-            Name(name).
-            Do().Into(&agent)
+        agent, err := ext.Agents().Get(name)
 
-        if err == nil && agent.Status.State == agentv1.AgentStateProcessed {
+        if err == nil && agent.Status.State == ext_v1.AgentStateProcessed {
             return true, nil
         }
 
