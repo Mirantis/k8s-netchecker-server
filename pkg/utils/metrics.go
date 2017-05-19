@@ -16,6 +16,7 @@ package utils
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/golang/glog"
@@ -33,6 +34,7 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 	}
 	name := ai.NodeName
 
+	// Basic Counter metrics
 	am.ErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace:   "ncagent",
 		Name:        "error_count_total",
@@ -46,15 +48,7 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 		Help:        "Total number of reports (keepalive messages) from the agent.",
 	})
 
-	if counter, ok := tryRegisterCounter(am.ErrorCount); !ok {
-		// use existing counter
-		am.ErrorCount = counter
-	}
-	if counter, ok := tryRegisterCounter(am.ReportCount); !ok {
-		// use existing counter
-		am.ReportCount = counter
-	}
-
+	// GaugeVec metrics for HTTP probes
 	am.ProbeConnectionResult = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "ncagent",
@@ -75,7 +69,7 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 		prometheus.GaugeOpts{
 			Namespace: "ncagent",
 			Name:      "http_probe_total_time_ms",
-			Help:      "The duration of total http request.",
+			Help:      "The total duration of http request.",
 		},
 		[]string{"agent", "url"},
 	)
@@ -85,7 +79,7 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 			Name:      "http_probe_content_transfer_time_ms",
 			Help: fmt.Sprint(
 				"The duration of content transfer time, from the first ",
-				"reponse byte till the end (in ms).",
+				"response byte till the end (in ms).",
 			),
 		},
 		[]string{"agent", "url"},
@@ -123,41 +117,20 @@ func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
 		[]string{"agent", "url"},
 	)
 
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeConnectionResult); !ok {
-		// use existing gauge
-		am.ProbeConnectionResult = gauge
-	}
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeHTTPCode); !ok {
-		// use existing gauge
-		am.ProbeHTTPCode = gauge
-	}
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeTotal); !ok {
-		// use existing gauge
-		am.ProbeTotal = gauge
-	}
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeContentTransfer); !ok {
-		// use existing gauge
-		am.ProbeContentTransfer = gauge
-	}
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeTCPConnection); !ok {
-		// use existing gauge
-		am.ProbeTCPConnection = gauge
-	}
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeTCPConnection); !ok {
-		// use existing gauge
-		am.ProbeTCPConnection = gauge
-	}
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeDNSLookup); !ok {
-		// use existing gauge
-		am.ProbeDNSLookup = gauge
-	}
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeConnect); !ok {
-		// use existing gauge
-		am.ProbeConnect = gauge
-	}
-	if gauge, ok := tryRegisterGaugeVec(am.ProbeServerProcessing); !ok {
-		// use existing gauge
-		am.ProbeServerProcessing = gauge
+	// Let's register all the metrics now
+	params := reflect.ValueOf(&am).Elem()
+	for i := 0; i < params.NumField(); i++ {
+		if e, ok := params.Field(i).Interface().(*prometheus.GaugeVec); ok {
+			if exists, ok := tryRegisterGaugeVec(e); !ok {
+				params.Field(i).Set(reflect.ValueOf(exists))
+			}
+		} else if e, ok := params.Field(i).Interface().(prometheus.Counter); ok {
+			if exists, ok := tryRegisterCounter(e); !ok {
+				params.Field(i).Set(reflect.ValueOf(exists))
+			}
+		} else {
+			glog.V(5).Infof("Skipping %v since it's not prometheus metric.", params.Type().Field(i).Name)
+		}
 	}
 
 	return am
@@ -194,7 +167,7 @@ func tryRegisterGaugeVec(m *prometheus.GaugeVec) (*prometheus.GaugeVec, bool) {
 	return m, true
 }
 
-// UpdateAgentBaseMetrics function updates basic metrcis with reports and
+// UpdateAgentBaseMetrics function updates basic metrics with reports and
 // error counters
 func UpdateAgentBaseMetrics(am AgentMetrics, report, error bool) {
 	if report {
@@ -207,7 +180,7 @@ func UpdateAgentBaseMetrics(am AgentMetrics, report, error bool) {
 	}
 }
 
-// UpdateAgentProbeMetrics functions updates HTTP probe metrics.
+// UpdateAgentProbeMetrics function updates HTTP probe metrics.
 func UpdateAgentProbeMetrics(ai AgentInfo, am AgentMetrics) {
 
 	suffix := "private_network"
