@@ -21,14 +21,13 @@
 * `http_probe_code` - Gauge. HTTP status code, 0 if no HTTP response.
 * `http_probe_total_time_ms` - Gauge. Total duration of http transaction.
 * `http_probe_content_transfer_time_ms` - Gauge. The duration of content
-  transfer time from the first reponse byte till the end (in ms).
+  transfer from the first response byte till the end (in ms).
 * `http_probe_tcp_connection_time_ms` - Gauge. TCP establishing time
   (in ms).
 * `http_probe_dns_lookup_time_ms` - Gauge. DNS lookup time (in ms).
 * `http_probe_connect_time_ms` - Gauge. Connection time in ms.
 * `http_probe_server_processing_time_ms` - Gauge. Server processing time
   (in ms).
-
 
 ## Prometheus configuration example
 
