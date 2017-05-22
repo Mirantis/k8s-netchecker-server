@@ -2,13 +2,32 @@
 
 ## Available metrics
 
+### Basic metrics
+
 * `go_*` - a set of default Go metrics provided by Prometheus library
 * `process_*` - a set of default Process metrics provided by Prometheus library
 * `ncagent_report_count_total` (label `agent`) - Counter. Number of total
-   reports from every agent (agents separated by label).
+  reports from every agent (agents separated by label).
 * `ncagent_error_count_total` (label `agent`) - Counter. Number of total errors
-   from every agent (agents separated by label). This counter is incremented
-   when agent does not report within `reporting_interval * 2` timeframe.
+  from every agent (agents separated by label). This counter is incremented
+  when agent does not report within `reporting_interval * 2` timeframe.
+
+### HTTP probes metrics
+
+![HTTP probe times](images/http_probes.png)
+
+* `http_probe_connection_result` - Gauge. Connection result: 0 - error,
+  1 - success.
+* `http_probe_code` - Gauge. HTTP status code, 0 if no HTTP response.
+* `http_probe_total_time_ms` - Gauge. Total duration of http transaction.
+* `http_probe_content_transfer_time_ms` - Gauge. The duration of content
+  transfer from the first response byte till the end (in ms).
+* `http_probe_tcp_connection_time_ms` - Gauge. TCP establishing time
+  (in ms).
+* `http_probe_dns_lookup_time_ms` - Gauge. DNS lookup time (in ms).
+* `http_probe_connect_time_ms` - Gauge. Connection time in ms.
+* `http_probe_server_processing_time_ms` - Gauge. Server processing time
+  (in ms).
 
 ## Prometheus configuration example
 
@@ -108,4 +127,43 @@ ALERT NetCheckerReportsMissing
     description = "Netchecker Agent {{ $labels.instance }} has reported only
       {{ $value }} times for the last 5 minutes",
   }
+```
+
+* Example of monitoring alert based on **http_probe_tcp_connection_time_ms**.
+  Let's monitor TCP connection time from Netchecker agents to Netchecker
+  server in this example and raise an alert if it increases by 100 ms.
+
+```
+ALERT NetCheckerTCPServerDelay
+  IF absent(ncagent_http_probe_tcp_connection_time_ms) OR
+    delta(ncagent_http_probe_tcp_connection_time_ms{
+      url="http://netchecker-service:8081/api/v1/ping"}[5m]) > 100
+  LABELS {
+    service = "netchecker",
+    severity = "warning"
+  }
+  ANNOTATIONS {
+    summary = "TCP connection to Netchecker server takes too much time",
+    description = "Netchecker Agent {{ $labels.instance }} TCP connection time
+      to Netchecker server has increased by {{ $value }} within the last 5
+      minutes",
+  }
+```
+
+* Example of alert rule to monitor DNS lookup time based on
+  **ncagent_http_probe_dns_lookup_time_ms** metric.
+
+```
+    ALERT NetCheckerDNSSlow
+      IF absent(ncagent_http_probe_dns_lookup_time_ms) OR
+        delta(ncagent_http_probe_dns_lookup_time_ms[5m]) > 300
+      LABELS {
+        service = "netchecker",
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "DNS lookup time is too high",
+        description = "DNS lookup time on Netchecker Agent {{ $labels.instance }}
+          has increased by {{ $value }} within the last 5 minutes",
+      }
 ```
