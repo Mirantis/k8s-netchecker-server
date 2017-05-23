@@ -15,58 +15,66 @@
 package v1
 
 import (
-    "time"
+	"time"
 
-    meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// AgentResourcePlural is a constant for plural form naming
 const AgentResourcePlural = "agents"
 
+// AgentSpec is a payload to keep Agent info
 type AgentSpec struct {
-    ReportInterval int                 `json:"report_interval"`
-    NodeName       string              `json:"nodename"`
-    PodName        string              `json:"podname"`
-    HostDate       time.Time           `json:"hostdate"`
-    LastUpdated    time.Time           `json:"last_updated"`
-    LookupHost     map[string][]string `json:"nslookup"`
-    NetworkProbes  []ProbeResult       `json:"network_probes"`
-    IPs            map[string][]string `json:"ips"`
+	ReportInterval int                 `json:"report_interval"`
+	NodeName       string              `json:"nodename"`
+	PodName        string              `json:"podname"`
+	HostDate       time.Time           `json:"hostdate"`
+	LastUpdated    time.Time           `json:"last_updated"`
+	LookupHost     map[string][]string `json:"nslookup"`
+	NetworkProbes  []ProbeResult       `json:"network_probes"`
+	IPs            map[string][]string `json:"ips"`
 }
 
 // ProbeResult structure for network probing results
 type ProbeResult struct {
-    URL              string
-    ConnectionResult int
-    HTTPCode         int
-    Total            int
-    ContentTransfer  int
-    TCPConnection    int
-    DNSLookup        int
-    Connect          int
-    ServerProcessing int
+	URL              string
+	ConnectionResult int
+	HTTPCode         int
+	Total            int
+	ContentTransfer  int
+	TCPConnection    int
+	DNSLookup        int
+	Connect          int
+	ServerProcessing int
 }
 
+// AgentStatus is a payload to keep agent status and message
 type AgentStatus struct {
-    State   AgentState   `json:"state,omitempty"`
-    Message string       `json:"message,omitempty"`
+	State   AgentState `json:"state,omitempty"`
+	Message string     `json:"message,omitempty"`
 }
 
+// AgentState type
 type AgentState string
 
 const (
-    AgentStateCreated   AgentState = "Created"
-    AgentStateProcessed AgentState = "Processed"
+	// AgentStateCreated constant
+	AgentStateCreated AgentState = "Created"
+	// AgentStateProcessed constant
+	AgentStateProcessed AgentState = "Processed"
 )
 
+// Agent struct to store AgentSpec info as json
 type Agent struct {
-    meta_v1.TypeMeta   `json:",inline"`
-    meta_v1.ObjectMeta `json:"metadata"`
-    Spec               AgentSpec   `json:"spec"`
-    Status             AgentStatus `json:"status,omitempty"`
+	meta_v1.TypeMeta   `json:",inline"`
+	meta_v1.ObjectMeta `json:"metadata"`
+	Spec               AgentSpec   `json:"spec"`
+	Status             AgentStatus `json:"status,omitempty"`
 }
 
+// AgentList struct to store many of agents
 type AgentList struct {
-    meta_v1.TypeMeta `json:",inline"`
-    meta_v1.ListMeta `json:"metadata"`
-    Items            []Agent `json:"items"`
+	meta_v1.TypeMeta `json:",inline"`
+	meta_v1.ListMeta `json:"metadata"`
+	Items            []Agent `json:"items"`
 }

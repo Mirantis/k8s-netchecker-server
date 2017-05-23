@@ -25,19 +25,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/negroni"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/kubernetes"
 	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
 	ext_client "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/client"
 	ext_controller "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/controller"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type Handler struct {
-	AgentCache  map[string]ext_v1.AgentSpec
-	Metrics     map[string]AgentMetrics
-	KubeClient  Proxy
-	HTTPHandler http.Handler
+	AgentCache          map[string]ext_v1.AgentSpec
+	Metrics             map[string]AgentMetrics
+	KubeClient          Proxy
+	HTTPHandler         http.Handler
 	ExtensionsClientset ext_client.Clientset
 }
 
@@ -155,10 +155,7 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 		},
 	}
 
-	glog.V(5).Info("================== HERE ==================")
-	glog.V(5).Info(agent)
-
-	agent, err = h.ExtensionsClientset.Agents().Update(agent)
+	agent, err = h.ExtensionsClientset.Agents().Create(agent)
 
 	if err != nil {
 		glog.V(5).Info(err)
@@ -179,8 +176,6 @@ func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httproute
 	}
 
 	for _, agent := range agents.Items {
-		glog.V(5).Info("================== HERE ==================")
-		glog.V(5).Info(agent)
 		agentsData[agent.ObjectMeta.Name] = agent.Spec
 	}
 
