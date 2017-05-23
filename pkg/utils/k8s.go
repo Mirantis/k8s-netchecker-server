@@ -37,6 +37,7 @@ type KubeProxy struct {
 	Client kubernetes.Interface
 }
 
+// SetupClientSet is a function for initialize kubernetes clientset
 func (kp *KubeProxy) SetupClientSet(config *rest.Config) (*kubernetes.Clientset, error) {
 	clientSet, err := kubernetes.NewForConfig(config)
 
