@@ -38,7 +38,7 @@ type AgentController struct {
 func (c *AgentController) Run(ctx context.Context) error {
 	glog.V(5).Info("Watch Agent objects")
 
-	// Watch Example objects
+	// Watch Agent objects
 	_, err := c.watchAgents(ctx)
 	if err != nil {
 		glog.V(5).Infof("Failed to register watch for Agent resource: %v\n", err)

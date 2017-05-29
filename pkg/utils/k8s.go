@@ -51,9 +51,6 @@ func (kp *KubeProxy) SetupClientSet(config *rest.Config) (*kubernetes.Clientset,
 }
 
 func (kp *KubeProxy) buildConfig() (*rest.Config, error) {
-	/*if kubeconfig != "" {
-		return clientcmd.BuildConfigFromFlags("", kubeconfig)
-	}*/
 	return rest.InClusterConfig()
 }
 
