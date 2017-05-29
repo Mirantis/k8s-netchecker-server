@@ -67,7 +67,7 @@ func WaitForAgentResource(client *rest.RESTClient) error {
 	})
 }
 
-// WaitForAgentInstanceProcessed is a handler to check instance of 3rd-party resource created
+// WaitForAgentInstanceProcessed is a handler to check instance of 3rd-party resource was processed
 func WaitForAgentInstanceProcessed(ext Clientset, name string) error {
 	return wait.Poll(100*time.Millisecond, 10*time.Second, func() (bool, error) {
 		agent, err := ext.Agents().Get(name)

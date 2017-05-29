@@ -133,16 +133,8 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 	_, err := h.ExtensionsClientset.Agents().Get(agentName)
 
 	if err != nil {
-		glog.V(5).Info(err)
+		glog.Error(err)
 	}
-
-	if api_errors.IsNotFound(err) {
-		h.Metrics[agentName] = NewAgentMetrics(&agentData)
-		h.cleanCacheOnDemand(nil)
-	}
-
-	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
-	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
 
 	agent := &ext_v1.Agent{
 		ObjectMeta: meta_v1.ObjectMeta{
@@ -155,16 +147,27 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 		},
 	}
 
-	agent, err = h.ExtensionsClientset.Agents().Create(agent)
+	if api_errors.IsNotFound(err) {
+		h.Metrics[agentName] = NewAgentMetrics(&agentData)
+		h.cleanCacheOnDemand(nil)
+		agent, err = h.ExtensionsClientset.Agents().Create(agent)
+	} else {
+		agent, err = h.ExtensionsClientset.Agents().Update(agent)
+	}
 
 	if err != nil {
-		glog.V(5).Info(err)
+		glog.Error(err)
 	}
 
 	err = ext_client.WaitForAgentInstanceProcessed(h.ExtensionsClientset, agentName)
 	if err != nil {
-		glog.V(5).Info(err)
+		glog.Error(err)
 	}
+
+	h.AgentCache[agentName] = agent.Spec
+
+	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
+	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
 }
 
 func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -172,7 +175,7 @@ func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httproute
 	agents, err := h.ExtensionsClientset.Agents().List()
 
 	if err != nil {
-		glog.V(5).Info(err)
+		glog.Error(err)
 	}
 
 	for _, agent := range agents.Items {
@@ -189,7 +192,7 @@ func (h *Handler) GetSingleAgent(rw http.ResponseWriter, r *http.Request, rp htt
 	agent, err := h.ExtensionsClientset.Agents().Get(agentName)
 
 	if err != nil {
-		glog.V(5).Info(err)
+		glog.Error(err)
 		return
 	}
 
