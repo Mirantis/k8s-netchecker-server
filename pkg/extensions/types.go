@@ -18,9 +18,13 @@ import (
 	"encoding/json"
 	"time"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	//"k8s.io/apimachinery/pkg/apis/meta/v1"
+	//meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/meta"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
 )
 
 const (
@@ -29,7 +33,7 @@ const (
 )
 
 var (
-	SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
+	SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: Version}
 	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
 )
 
@@ -39,8 +43,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&Agent{},
 		&AgentList{},
 
-		&meta_v1.ListOptions{},
-		&meta_v1.DeleteOptions{},
+		&v1.ListOptions{},
+		&v1.DeleteOptions{},
 	)
 	return nil
 }
@@ -55,34 +59,30 @@ type AgentSpec struct {
 }
 
 type Agent struct {
-	meta_v1.TypeMeta `json:",inline"`
-	Metadata         meta_v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	unversioned.TypeMeta `json:",inline"`
+	Metadata         api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec AgentSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 }
 
 type AgentList struct {
-	meta_v1.TypeMeta `json:",inline"`
-	Metadata         meta_v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	unversioned.TypeMeta `json:",inline"`
+	Metadata         unversioned.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []Agent `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-func (e *Agent) GetObjectKind() schema.ObjectKind {
+func (e *Agent) GetObjectKind() unversioned.ObjectKind {
 	return &e.TypeMeta
 }
 
-func (e *Agent) GetObjectMeta() meta_v1.Object {
+func (e *Agent) GetObjectMeta() meta.Object {
 	return &e.Metadata
 }
 
-func (el *AgentList) GetObjectKind() schema.ObjectKind {
-	return &el.TypeMeta
-}
-
-func (el *AgentList) GetListMeta() meta_v1.List {
-	return &el.Metadata
-}
+//func (el *AgentList) GetObjectKind() unversioned.ObjectKind {
+//	return &el.TypeMeta
+//}
 
 type AgentCopy Agent
 type AgentListCopy AgentList

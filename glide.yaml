@@ -3,10 +3,15 @@ import:
 - package: github.com/golang/glog
 - package: github.com/julienschmidt/httprouter
 - package: k8s.io/client-go
+  version: v2.0.0
   subpackages:
   - kubernetes
-  - pkg/api/v1
+  - pkg/api
+  - pkg/labels
   - rest
+  - tools/clientcmd
+- package: github.com/onsi/ginkgo
+- package: github.com/onsi/gomega
 - package: k8s.io/apimachinery
   subpackages:
   - pkg/apimachinery/announced
@@ -15,6 +20,7 @@ import:
   - pkg/labels
   - pkg/selection
   - pkg/apis/meta/v1
+  - pkg/util
 - package: github.com/urfave/negroni
 - package: github.com/prometheus/client_golang
   version: v0.8.0
