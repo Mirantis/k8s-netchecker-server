@@ -1,4 +1,4 @@
-// Copyright 2016 Mirantis
+// Copyright 2017 Mirantis
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ func init() {
 	flag.StringVar(&apiMaster, "master", "http://localhost:8080", "apiserver address to use with restclient")
 }
 
-// Logf
+// Logf - write formatted logs using GinkgoWriter
 func Logf(format string, a ...interface{}) {
 	fmt.Fprintf(ginkgo.GinkgoWriter, format, a...)
 }
@@ -54,7 +54,7 @@ func loadConfig() *rest.Config {
 	return config
 }
 
-// KubeClient
+// KubeClient - get kubernetes API Clientset
 func KubeClient() (*kubernetes.Clientset, error) {
 	Logf("Using master %v\n", apiMaster)
 	config := loadConfig()
@@ -63,7 +63,7 @@ func KubeClient() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-// WaitForReady
+// WaitForReady -
 func WaitForReady(clientset *kubernetes.Clientset, pod *v1.Pod) {
 	gomega.Eventually(func() error {
 		podUpdated, err := clientset.Core().Pods(pod.Namespace).Get(pod.Name, meta_v1.GetOptions{})
@@ -77,7 +77,7 @@ func WaitForReady(clientset *kubernetes.Clientset, pod *v1.Pod) {
 	}, 120*time.Second, 5*time.Second).Should(gomega.BeNil())
 }
 
-// DumpLogs
+// DumpLogs - dump pods logs using GinkgoWriter
 func DumpLogs(clientset *kubernetes.Clientset, pods ...v1.Pod) {
 	for _, pod := range pods {
 		dumpLogs(clientset, pod)
@@ -94,7 +94,7 @@ func dumpLogs(clientset *kubernetes.Clientset, pod v1.Pod) {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 }
 
-// ExecInPod
+// ExecInPod - execute command in a pod
 func ExecInPod(clientset *kubernetes.Clientset, pod v1.Pod, cmd ...string) (string, string, error) {
 	Logf("Running %v in %v\n", cmd, pod.Name)
 

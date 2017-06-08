@@ -1,4 +1,4 @@
-// Copyright 2016 Mirantis
+// Copyright 2017 Mirantis
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@ package e2e
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 )
 
 func TestBasicFeatures(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Basic")
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "Basic")
 }
