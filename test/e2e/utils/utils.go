@@ -33,36 +33,39 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 )
 
-var MASTER string
+var apiMaster string
 
 func init() {
-	flag.StringVar(&MASTER, "master", "http://localhost:8080", "apiserver address to use with restclient")
+	flag.StringVar(&apiMaster, "master", "http://localhost:8080", "apiserver address to use with restclient")
 }
 
+// Logf
 func Logf(format string, a ...interface{}) {
-	fmt.Fprintf(GinkgoWriter, format, a...)
+	fmt.Fprintf(ginkgo.GinkgoWriter, format, a...)
 }
 
-func LoadConfig() *rest.Config {
-	config, err := clientcmd.BuildConfigFromFlags(MASTER, "")
-	Expect(err).NotTo(HaveOccurred())
+func loadConfig() *rest.Config {
+	config, err := clientcmd.BuildConfigFromFlags(apiMaster, "")
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return config
 }
 
+// KubeClient
 func KubeClient() (*kubernetes.Clientset, error) {
-	Logf("Using master %v\n", MASTER)
-	config := LoadConfig()
+	Logf("Using master %v\n", apiMaster)
+	config := loadConfig()
 	clientset, err := kubernetes.NewForConfig(config)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return clientset, nil
 }
 
+// WaitForReady
 func WaitForReady(clientset *kubernetes.Clientset, pod *v1.Pod) {
-	Eventually(func() error {
+	gomega.Eventually(func() error {
 		podUpdated, err := clientset.Core().Pods(pod.Namespace).Get(pod.Name, meta_v1.GetOptions{})
 		if err != nil {
 			return err
@@ -71,9 +74,10 @@ func WaitForReady(clientset *kubernetes.Clientset, pod *v1.Pod) {
 			return fmt.Errorf("pod %v is not running phase: %v", podUpdated.Name, podUpdated.Status.Phase)
 		}
 		return nil
-	}, 120*time.Second, 5*time.Second).Should(BeNil())
+	}, 120*time.Second, 5*time.Second).Should(gomega.BeNil())
 }
 
+// DumpLogs
 func DumpLogs(clientset *kubernetes.Clientset, pods ...v1.Pod) {
 	for _, pod := range pods {
 		dumpLogs(clientset, pod)
@@ -83,21 +87,22 @@ func DumpLogs(clientset *kubernetes.Clientset, pods ...v1.Pod) {
 func dumpLogs(clientset *kubernetes.Clientset, pod v1.Pod) {
 	req := clientset.Core().Pods(pod.Namespace).GetLogs(pod.Name, &v1.PodLogOptions{})
 	readCloser, err := req.Stream()
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	defer readCloser.Close()
 	Logf("\n Dumping logs for %v:%v \n", pod.Namespace, pod.Name)
-	_, err = io.Copy(GinkgoWriter, readCloser)
-	Expect(err).NotTo(HaveOccurred())
+	_, err = io.Copy(ginkgo.GinkgoWriter, readCloser)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 }
 
+// ExecInPod
 func ExecInPod(clientset *kubernetes.Clientset, pod v1.Pod, cmd ...string) (string, string, error) {
 	Logf("Running %v in %v\n", cmd, pod.Name)
 
 	container := pod.Spec.Containers[0].Name
 	var stdout, stderr bytes.Buffer
-	config := LoadConfig()
-	rest := clientset.CoreV1Client.RESTClient()
-	req := rest.Post().
+	config := loadConfig()
+	client := clientset.CoreV1Client.RESTClient()
+	req := client.Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(pod.Namespace).

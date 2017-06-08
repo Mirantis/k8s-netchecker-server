@@ -22,8 +22,8 @@ import (
 
 	testutils "github.com/Mirantis/k8s-netchecker-server/test/e2e/utils"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -33,15 +33,15 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-var _ = Describe("Basic", func() {
+var _ = ginkgo.Describe("Basic", func() {
 	var clientset *kubernetes.Clientset
 	var ns *v1.Namespace
 	var serverPort int = 8989
 
-	BeforeEach(func() {
+	ginkgo.BeforeEach(func() {
 		var err error
 		clientset, err = testutils.KubeClient()
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		namespaceObj := &v1.Namespace{
 			ObjectMeta: meta_v1.ObjectMeta{
 				GenerateName: "e2e-tests-netchecker-",
@@ -50,12 +50,12 @@ var _ = Describe("Basic", func() {
 			Status: v1.NamespaceStatus{},
 		}
 		ns, err = clientset.Namespaces().Create(namespaceObj)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
 
-	AfterEach(func() {
+	ginkgo.AfterEach(func() {
 		podList, _ := clientset.Core().Pods(ns.Name).List(meta_v1.ListOptions{LabelSelector: labels.Everything().String()})
-		if CurrentGinkgoTestDescription().Failed {
+		if ginkgo.CurrentGinkgoTestDescription().Failed {
 			testutils.DumpLogs(clientset, podList.Items...)
 		}
 		for _, pod := range podList.Items {
@@ -64,40 +64,40 @@ var _ = Describe("Basic", func() {
 		clientset.Namespaces().Delete(ns.Name, &meta_v1.DeleteOptions{})
 	})
 
-	It("Connectivity check should pass", func() {
-		By("deploying netchecker server pod")
+	ginkgo.It("Connectivity check should pass", func() {
+		ginkgo.By("deploying netchecker server pod")
 		endpointArg := fmt.Sprintf("--endpoint=0.0.0.0:%d", serverPort)
 		serverPod := newPod(
 			"netchecker-server", "netchecker-server", "mirantis/k8s-netchecker-server",
 			[]string{"netchecker-server", "--kubeproxyinit", "--logtostderr", "--v=10", endpointArg}, nil, false, true, nil)
 		pod, err := clientset.Pods(ns.Name).Create(serverPod)
-		Expect(err).Should(BeNil())
+		gomega.Expect(err).Should(gomega.BeNil())
 		testutils.WaitForReady(clientset, pod)
 
-		By("deploying netchecker service")
+		ginkgo.By("deploying netchecker service")
 		servicePorts := []v1.ServicePort{{Protocol: v1.ProtocolTCP, Port: int32(serverPort), TargetPort: intstr.FromInt(serverPort)}}
-		server_svc := newService("netchecker-service", nil, servicePorts, []string{})
-		_, err = clientset.Services(ns.Name).Create(server_svc)
-		Expect(err).Should(BeNil())
+		serverSvc := newService("netchecker-service", nil, servicePorts, []string{})
+		_, err = clientset.Services(ns.Name).Create(serverSvc)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-		By("deploying netchecker agent daemonset")
+		ginkgo.By("deploying netchecker agent daemonset")
 		var ncAgentLabels = map[string]string{"app": "netchecker-agent"}
 		serverEndpointArg := fmt.Sprintf("--serverendpoint=netchecker-service:%d", serverPort)
 		cmd := []string{"netchecker-agent", "--alsologtostderr=true", "--v=10", serverEndpointArg, "--reportinterval=20"}
 		agentDS := newDaemonSet("netchecker-agent", "netchecker-agent", "mirantis/k8s-netchecker-agent",
 			[]string{"sh", "-c", strings.Join(cmd, " ")}, ncAgentLabels, false, true,
 			[]v1.EnvVar{
-				{Name: "MY_NODE_NAME", ValueFrom:&v1.EnvVarSource{FieldRef:&v1.ObjectFieldSelector{FieldPath:"spec.nodeName"}}},
-				{Name: "MY_POD_NAME", ValueFrom:&v1.EnvVarSource{FieldRef:&v1.ObjectFieldSelector{FieldPath:"metadata.name"}}},
+				{Name: "MY_NODE_NAME", ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "spec.nodeName"}}},
+				{Name: "MY_POD_NAME", ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}}},
 			},
 		)
 		_, err = clientset.Extensions().DaemonSets(ns.Name).Create(agentDS)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		testutils.Logf("current pods: %v\n", getPods(clientset, ns))
 		testutils.Logf("current services: %v\n", getServices(clientset, ns))
 
-		By("veryfiying that service is reachable using DNS")
+		ginkgo.By("veryfiying that service is reachable using DNS")
 		//verifyServiceReachable(serverPort, []string{"0.0.0.0"}...)
 	})
 })
@@ -112,7 +112,7 @@ func newPrivilegedPodSpec(containerName, imageName string, cmd []string, hostNet
 				Command:         cmd,
 				SecurityContext: &v1.SecurityContext{Privileged: &privileged},
 				ImagePullPolicy: v1.PullIfNotPresent,
-				Env:			 env,
+				Env:             env,
 			},
 		},
 	}
@@ -180,7 +180,7 @@ func verifyServiceReachable(port int, ips ...string) {
 	client := http.Client{
 		Timeout: timeout,
 	}
-	Eventually(func() error {
+	gomega.Eventually(func() error {
 		for _, ip := range ips {
 			resp, err := client.Get(fmt.Sprintf("http://%s:%d/api/v1/ping", ip, port))
 			if err != nil {
@@ -191,17 +191,17 @@ func verifyServiceReachable(port int, ips ...string) {
 			}
 		}
 		return nil
-	}, 30*time.Second, 1*time.Second).Should(BeNil())
+	}, 30*time.Second, 1*time.Second).Should(gomega.BeNil())
 }
 
 func getPods(clientset *kubernetes.Clientset, ns *v1.Namespace) []v1.Pod {
 	pods, err := clientset.Pods(ns.Name).List(meta_v1.ListOptions{})
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return pods.Items
 }
 
 func getServices(clientset *kubernetes.Clientset, ns *v1.Namespace) []v1.Service {
 	services, err := clientset.Services(ns.Name).List(meta_v1.ListOptions{})
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return services.Items
 }
