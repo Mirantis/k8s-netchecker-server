@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
@@ -30,7 +32,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
-	"k8s.io/kubernetes/pkg/util/httpstream/spdy"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -62,7 +63,7 @@ func KubeClient() (*kubernetes.Clientset, error) {
 
 func WaitForReady(clientset *kubernetes.Clientset, pod *v1.Pod) {
 	Eventually(func() error {
-		podUpdated, err := clientset.Core().Pods(pod.Namespace).Get(pod.Name)
+		podUpdated, err := clientset.Core().Pods(pod.Namespace).Get(pod.Name, meta_v1.GetOptions{})
 		if err != nil {
 			return err
 		}

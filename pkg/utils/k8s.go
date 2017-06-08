@@ -20,17 +20,16 @@ import (
 	"github.com/Mirantis/k8s-netchecker-server/pkg/extensions"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/selection"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/runtime"
-	"k8s.io/client-go/pkg/runtime/serializer"
-	versionedwatch "k8s.io/client-go/pkg/watch/versioned"
 	"k8s.io/client-go/rest"
 )
 
@@ -62,11 +61,11 @@ func (kp *KubeProxy) SetupClientSet() error {
 }
 
 func (kp *KubeProxy) initThirdParty() error {
-	tpr, err := kp.Client.ExtensionsV1beta1().ThirdPartyResources().Get("agent.network-checker.ext")
+	tpr, err := kp.Client.ExtensionsV1beta1().ThirdPartyResources().Get("agent.network-checker.ext", meta_v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			tpr := &v1beta1.ThirdPartyResource{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: meta_v1.ObjectMeta{
 					Name: "agent.network-checker.ext",
 				},
 				Versions: []v1beta1.APIVersion{
@@ -90,7 +89,7 @@ func (kp *KubeProxy) initThirdParty() error {
 }
 
 func configureClient(config *rest.Config) {
-	groupversion := unversioned.GroupVersion{
+	groupversion := schema.GroupVersion{
 		Group:   "network-checker.ext",
 		Version: "v1",
 	}
@@ -109,7 +108,7 @@ func configureClient(config *rest.Config) {
 			)
 			return nil
 		})
-	versionedwatch.AddToGroupVersion(api.Scheme, groupversion)
+	meta_v1.AddToGroupVersion(api.Scheme, groupversion)
 	schemeBuilder.AddToScheme(api.Scheme)
 }
 
@@ -120,6 +119,6 @@ func (kp *KubeProxy) Pods() (*v1.PodList, error) {
 	}
 	glog.V(10).Infof("Selector for kubernetes pods: %v", requirement.String())
 
-	pods, err := kp.Client.Core().Pods("").List(v1.ListOptions{LabelSelector: requirement.String()})
+	pods, err := kp.Client.Core().Pods("").List(meta_v1.ListOptions{LabelSelector: requirement.String()})
 	return pods, err
 }

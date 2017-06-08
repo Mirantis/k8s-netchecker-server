@@ -18,12 +18,13 @@ import (
 	"bytes"
 	"encoding/json"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/watch"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/runtime"
-	"k8s.io/client-go/pkg/runtime/serializer"
-	"k8s.io/client-go/pkg/watch"
 	"k8s.io/client-go/rest"
 )
 
@@ -43,7 +44,7 @@ func WrapClientsetWithExtensions(clientset *kubernetes.Clientset, config *rest.C
 func extensionClient(config *rest.Config) (*rest.RESTClient, error) {
 	config.APIPath = "/apis"
 	config.ContentConfig = rest.ContentConfig{
-		GroupVersion: &unversioned.GroupVersion{
+		GroupVersion: &schema.GroupVersion{
 			Group:   GroupName,
 			Version: Version,
 		},
