@@ -93,7 +93,7 @@ unit:
 
 .PHONY: e2e
 e2e: $(BUILD_DIR)/e2e.test $(ENV_PREPARE_MARKER)
-	echo "TODO: sudo $(BUILD_DIR)/e2e.test"
+	sudo $(BUILD_DIR)/e2e.test --master=http://localhost:8080 -ginkgo.v
 
 
 .PHONY: test
@@ -147,7 +147,8 @@ $(BUILD_DIR)/server: $(BUILD_DIR) $(VENDOR_DIR)
 
 
 $(BUILD_DIR)/e2e.test: $(BUILD_DIR) $(VENDOR_DIR)
-	$(DOCKER_EXEC) echo "TODO: go test -c -o $@ ./test/e2e/"
+	$(DOCKER_EXEC) bash -xc '$(DOCKER_DEPS) \
+		go test -c -o $@ ./test/e2e/'
 
 
 $(BUILD_IMAGE_MARKER): $(BUILD_DIR)/server
