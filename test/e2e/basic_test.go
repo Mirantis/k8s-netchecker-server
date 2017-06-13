@@ -15,16 +15,19 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/Mirantis/k8s-netchecker-server/pkg/utils"
 	testutils "github.com/Mirantis/k8s-netchecker-server/test/e2e/utils"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 
+	"io/ioutil"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -67,23 +70,24 @@ var _ = ginkgo.Describe("Basic", func() {
 	ginkgo.It("Connectivity check should pass", func() {
 		ginkgo.By("deploying netchecker server pod")
 		endpointArg := fmt.Sprintf("--endpoint=0.0.0.0:%d", serverPort)
+		serverLabels := map[string]string{"app": "netchecker-server"}
 		serverPod := newPod(
 			"netchecker-server", "netchecker-server", "mirantis/k8s-netchecker-server",
-			[]string{"netchecker-server", "--kubeproxyinit", "--logtostderr", "--v=10", endpointArg}, nil, false, true, nil)
+			[]string{"netchecker-server", "--kubeproxyinit", "--logtostderr", "--v=5", endpointArg}, serverLabels, false, true, nil)
 		pod, err := clientset.Pods(ns.Name).Create(serverPod)
 		gomega.Expect(err).Should(gomega.BeNil())
 		testutils.WaitForReady(clientset, pod)
 
 		ginkgo.By("deploying netchecker service")
 		servicePorts := []v1.ServicePort{{Protocol: v1.ProtocolTCP, Port: int32(serverPort), TargetPort: intstr.FromInt(serverPort)}}
-		serverSvc := newService("netchecker-service", nil, servicePorts, []string{})
+		serverSvc := newService("netchecker-service", serverLabels, servicePorts, []string{})
 		_, err = clientset.Services(ns.Name).Create(serverSvc)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		ginkgo.By("deploying netchecker agent daemonset")
 		var ncAgentLabels = map[string]string{"app": "netchecker-agent"}
 		serverEndpointArg := fmt.Sprintf("--serverendpoint=netchecker-service:%d", serverPort)
-		cmd := []string{"netchecker-agent", "--alsologtostderr=true", "--v=10", serverEndpointArg, "--reportinterval=20"}
+		cmd := []string{"netchecker-agent", "--alsologtostderr=true", "--v=5", serverEndpointArg, "--reportinterval=10"}
 		agentDS := newDaemonSet("netchecker-agent", "netchecker-agent", "mirantis/k8s-netchecker-agent",
 			[]string{"sh", "-c", strings.Join(cmd, " ")}, ncAgentLabels, false, true,
 			[]v1.EnvVar{
@@ -94,11 +98,48 @@ var _ = ginkgo.Describe("Basic", func() {
 		_, err = clientset.Extensions().DaemonSets(ns.Name).Create(agentDS)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		testutils.Logf("current pods: %v\n", getPods(clientset, ns))
-		testutils.Logf("current services: %v\n", getServices(clientset, ns))
+		// ensure agents are up and they have sent their reports to the server
+		time.Sleep(15 * time.Second)
 
-		ginkgo.By("veryfiying that service is reachable using DNS")
-		//verifyServiceReachable(serverPort, []string{"0.0.0.0"}...)
+		services := getServices(clientset, ns)
+		ncService := false
+		for _, svc := range services {
+			if svc.ObjectMeta.Name == "netchecker-service" {
+				ncService = true
+				break
+			}
+		}
+		gomega.Expect(ncService).To(gomega.BeTrue())
+
+		pods := getPods(clientset, ns)
+		ncServerIP := ""
+		ncAgentNames := map[string]bool{}
+		for _, pod := range pods {
+			if pod.ObjectMeta.Name == "netchecker-server" {
+				ncServerIP = pod.Status.PodIP
+			} else if pod.ObjectMeta.Name[:16] == "netchecker-agent" {
+				ncAgentNames[pod.ObjectMeta.Name] = true
+			}
+		}
+		gomega.Expect(ncServerIP).NotTo(gomega.BeEmpty())
+
+		ginkgo.By("verifying that server is fed by all the agents")
+		agentsResp := map[string]utils.AgentInfo{}
+		httpServiceGet(serverPort, ncServerIP, "api/v1/agents/", &agentsResp)
+		for agentName := range agentsResp {
+			// server has reports from every agent
+			gomega.Expect(ncAgentNames[agentName]).To(gomega.BeTrue())
+		}
+		// agent count in server's data is the same as agent pod count
+		gomega.Expect(len(ncAgentNames)).To(gomega.BeEquivalentTo(len(agentsResp)))
+
+		ginkgo.By("verifying connectivity in cluster")
+		ccResp := utils.CheckConnectivityInfo{}
+		httpServiceGet(serverPort, ncServerIP, "api/v1/connectivity_check", &ccResp)
+		// server has reports from all the agents
+		gomega.Expect(ccResp.Absent).To(gomega.BeEmpty())
+		// all the agents reports are up to date
+		gomega.Expect(ccResp.Outdated).To(gomega.BeEmpty())
 	})
 })
 
@@ -143,7 +184,6 @@ func newDaemonSet(dsName, containerName, imageName string, cmd []string, labels 
 			},
 		},
 	}
-
 }
 
 func newDeployment(deploymentName string, replicas int32, podLabels map[string]string, imageName string, image string, cmd []string, env []v1.EnvVar) *v1beta1.Deployment {
@@ -175,23 +215,33 @@ func newService(serviceName string, labels map[string]string, ports []v1.Service
 	}
 }
 
-func verifyServiceReachable(port int, ips ...string) {
+func httpServiceGet(port int, ip string, uri string, dst interface{}) {
 	timeout := time.Duration(1 * time.Second)
 	client := http.Client{
 		Timeout: timeout,
 	}
 	gomega.Eventually(func() error {
-		for _, ip := range ips {
-			resp, err := client.Get(fmt.Sprintf("http://%s:%d/api/v1/ping", ip, port))
-			if err != nil {
-				return err
-			}
-			if resp.StatusCode > 200 {
-				return fmt.Errorf("Unexpected error from nginx service: %s", resp.Status)
-			}
+		resp, err := client.Get(fmt.Sprintf("http://%s:%d/%s", ip, port, uri))
+		if err != nil {
+			return err
 		}
+		if resp.StatusCode > 200 {
+			return fmt.Errorf("Unexpected error from nginx service: %s", resp.Status)
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		} else {
+			resp.Body.Close()
+		}
+		err = json.Unmarshal(body, dst)
+		if err != nil {
+			return err
+		}
+
 		return nil
-	}, 30*time.Second, 1*time.Second).Should(gomega.BeNil())
+	}, 10*time.Second, 1*time.Second).Should(gomega.BeNil())
 }
 
 func getPods(clientset *kubernetes.Clientset, ns *v1.Namespace) []v1.Pod {
