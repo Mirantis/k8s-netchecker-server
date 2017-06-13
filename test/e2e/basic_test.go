@@ -232,15 +232,10 @@ func httpServiceGet(port int, ip string, uri string, dst interface{}) {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return err
-		} else {
-			resp.Body.Close()
 		}
+		resp.Body.Close()
 		err = json.Unmarshal(body, dst)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	}, 10*time.Second, 1*time.Second).Should(gomega.BeNil())
 }
 
