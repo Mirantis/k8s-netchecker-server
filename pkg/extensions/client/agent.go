@@ -15,24 +15,17 @@
 package client
 
 import (
-	"time"
-
-	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	api_v1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/rest"
-
 	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // CreateAgentThirdPartyResource is a function to initialize schema for 3rd-party resource
 func CreateAgentThirdPartyResource(clientset kubernetes.Interface) error {
 	agent := &v1beta1.ThirdPartyResource{
 		ObjectMeta: meta_v1.ObjectMeta{
-			Name: "agents." + ext_v1.GroupName,
+			Name: "agent." + ext_v1.GroupName,
 		},
 		Versions: []v1beta1.APIVersion{
 			{Name: ext_v1.SchemeGroupVersion.Version},
@@ -45,37 +38,4 @@ func CreateAgentThirdPartyResource(clientset kubernetes.Interface) error {
 		Create(agent)
 
 	return err
-}
-
-// WaitForAgentResource is a handler to check 3rd-party resource exist
-func WaitForAgentResource(client *rest.RESTClient) error {
-	return wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
-		_, err := client.Get().
-			Namespace(api_v1.NamespaceDefault).
-			Resource(ext_v1.AgentResourcePlural).
-			DoRaw()
-
-		if err == nil {
-			return true, nil
-		}
-
-		if api_errors.IsNotFound(err) {
-			return false, nil
-		}
-
-		return false, err
-	})
-}
-
-// WaitForAgentInstanceProcessed is a handler to check instance of 3rd-party resource was processed
-func WaitForAgentInstanceProcessed(ext Clientset, name string) error {
-	return wait.Poll(100*time.Millisecond, 10*time.Second, func() (bool, error) {
-		agent, err := ext.Agents().Get(name)
-
-		if err == nil && agent.Status.State == ext_v1.AgentStateProcessed {
-			return true, nil
-		}
-
-		return false, err
-	})
 }

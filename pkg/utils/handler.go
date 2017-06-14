@@ -15,7 +15,6 @@
 package utils
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -27,7 +26,6 @@ import (
 
 	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
 	ext_client "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/client"
-	ext_controller "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/controller"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -72,21 +70,6 @@ func NewHandler(createKubeClient bool) (*Handler, error) {
 		if err != nil {
 			return nil, err
 		}
-		// wait until TPR gets processed
-		err = ext_client.WaitForAgentResource(ext.Client)
-		if err != nil {
-			return nil, err
-		}
-
-		// start a controller on instances of our TPR
-		controller := ext_controller.AgentController{
-			AgentClient: ext.Client,
-			AgentScheme: ext.Scheme,
-		}
-
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
-		go controller.Run(ctx)
 
 		h.ExtensionsClientset = ext
 	}
@@ -141,10 +124,6 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 			Name: agentName,
 		},
 		Spec: agentData,
-		Status: ext_v1.AgentStatus{
-			State:   ext_v1.AgentStateCreated,
-			Message: "Created, not processed yet",
-		},
 	}
 
 	if api_errors.IsNotFound(err) {
@@ -155,11 +134,6 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 		agent, err = h.ExtensionsClientset.Agents().Update(agent)
 	}
 
-	if err != nil {
-		glog.Error(err)
-	}
-
-	err = ext_client.WaitForAgentInstanceProcessed(h.ExtensionsClientset, agentName)
 	if err != nil {
 		glog.Error(err)
 	}
@@ -182,9 +156,7 @@ func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httproute
 		agentsData[agent.ObjectMeta.Name] = agent.Spec
 	}
 
-	if err = ProcessResponse(rw, agentsData); err != nil {
-		return
-	}
+	ProcessResponse(rw, agentsData)
 }
 
 func (h *Handler) GetSingleAgent(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
@@ -202,9 +174,7 @@ func (h *Handler) GetSingleAgent(rw http.ResponseWriter, r *http.Request, rp htt
 		return
 	}
 
-	if err = ProcessResponse(rw, agent); err != nil {
-		return
-	}
+	ProcessResponse(rw, agent)
 }
 
 func (h *Handler) ConnectivityCheck(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
