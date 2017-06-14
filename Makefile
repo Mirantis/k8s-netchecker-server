@@ -146,6 +146,7 @@ $(BUILD_DIR)/server: $(BUILD_DIR) $(VENDOR_DIR)
 		chown $(shell id -u):$(shell id -g) -R $(BUILD_DIR)'
 
 
+
 $(BUILD_DIR)/e2e.test: $(BUILD_DIR) $(VENDOR_DIR)
 	$(DOCKER_EXEC) bash -xc '$(DOCKER_DEPS) \
 		go test -c -o $@ ./test/e2e/'
@@ -160,5 +161,5 @@ $(ENV_PREPARE_MARKER): build-image
 	NETCHECKER_REPO=$(NETCHECKER_REPO) bash ./scripts/build_image_server_or_agent.sh
 	bash ./scripts/kubeadm_dind_cluster.sh
 	IMAGE_REPO_SERVER=$(IMAGE_REPO_SERVER) IMAGE_REPO_AGENT=$(IMAGE_REPO_AGENT) bash ./scripts/import_images.sh
-	NETCHECKER_REPO=$(NETCHECKER_REPO) bash ./scripts/helm_install_and_deploy.sh
+	# NETCHECKER_REPO=$(NETCHECKER_REPO) bash ./scripts/helm_install_and_deploy.sh
 	touch $(ENV_PREPARE_MARKER)
