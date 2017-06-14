@@ -32,7 +32,7 @@ import (
 func CreateAgentThirdPartyResource(clientset kubernetes.Interface) error {
 	agent := &v1beta1.ThirdPartyResource{
 		ObjectMeta: meta_v1.ObjectMeta{
-			Name: "agents." + ext_v1.GroupName,
+			Name: "agent." + ext_v1.GroupName,
 		},
 		Versions: []v1beta1.APIVersion{
 			{Name: ext_v1.SchemeGroupVersion.Version},
