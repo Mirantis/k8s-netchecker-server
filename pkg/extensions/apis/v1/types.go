@@ -48,28 +48,11 @@ type ProbeResult struct {
 	ServerProcessing int
 }
 
-// AgentStatus is a payload to keep agent status and message
-type AgentStatus struct {
-	State   AgentState `json:"state,omitempty"`
-	Message string     `json:"message,omitempty"`
-}
-
-// AgentState type
-type AgentState string
-
-const (
-	// AgentStateCreated constant
-	AgentStateCreated AgentState = "Created"
-	// AgentStateProcessed constant
-	AgentStateProcessed AgentState = "Processed"
-)
-
 // Agent struct to store AgentSpec info as json
 type Agent struct {
 	meta_v1.TypeMeta   `json:",inline"`
 	meta_v1.ObjectMeta `json:"metadata"`
-	Spec               AgentSpec   `json:"spec"`
-	Status             AgentStatus `json:"status,omitempty"`
+	Spec               AgentSpec `json:"spec"`
 }
 
 // AgentList struct to store many of agents
