@@ -23,32 +23,55 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/negroni"
+
+	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
+	ext_client "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/client"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type Handler struct {
-	AgentCache  map[string]AgentInfo
-	Metrics     map[string]AgentMetrics
-	KubeClient  Proxy
-	HTTPHandler http.Handler
+	AgentCache          map[string]ext_v1.AgentSpec
+	Metrics             map[string]AgentMetrics
+	KubeClient          Proxy
+	HTTPHandler         http.Handler
+	ExtensionsClientset ext_client.Clientset
 }
 
 func NewHandler(createKubeClient bool) (*Handler, error) {
 	h := &Handler{
-		AgentCache: map[string]AgentInfo{},
+		AgentCache: map[string]ext_v1.AgentSpec{},
 		Metrics:    map[string]AgentMetrics{},
 	}
 
 	var err error
+	var clientset *kubernetes.Clientset
+
 	if createKubeClient {
 		proxy := &KubeProxy{}
-		err = proxy.SetupClientSet()
-		if err == nil {
-			h.KubeClient = proxy
-		}
-		err = proxy.initThirdParty()
+
+		config, err := proxy.buildConfig()
 		if err != nil {
 			return nil, err
 		}
+
+		clientset, err = proxy.SetupClientSet(config)
+		if err == nil {
+			h.KubeClient = proxy
+		}
+
+		err = ext_client.CreateAgentThirdPartyResource(clientset)
+		if err != nil && !api_errors.IsAlreadyExists(err) {
+			return nil, err
+		}
+
+		ext, err := ext_client.WrapClientsetWithExtensions(clientset, config)
+		if err != nil {
+			return nil, err
+		}
+
+		h.ExtensionsClientset = ext
 	}
 
 	h.SetupRouter()
@@ -59,6 +82,7 @@ func NewHandler(createKubeClient bool) (*Handler, error) {
 
 func (h *Handler) SetupRouter() {
 	glog.V(10).Info("Setting up the url multiplexer")
+
 	router := httprouter.New()
 	router.POST("/api/v1/agents/:name", h.UpdateAgents)
 	router.GET("/api/v1/agents/:name", h.CleanCache(h.GetSingleAgent))
@@ -79,36 +103,78 @@ func (h *Handler) AddMiddleware() {
 }
 
 func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
-	agentData := AgentInfo{}
+	agentData := ext_v1.AgentSpec{}
+
 	if err := ProcessRequest(r, &agentData, rw); err != nil {
 		return
 	}
 
 	agentData.LastUpdated = time.Now()
-	glog.V(10).Infof("Updating the agents cache with value: %v", agentData)
+	glog.V(10).Infof("Updating the agents resource with value: %v", agentData)
+
 	agentName := rp.ByName("name")
-	if _, exists := h.AgentCache[agentName]; !exists {
-		h.Metrics[agentName] = NewAgentMetrics(&agentData)
-		h.cleanCacheOnDemand(nil)
+	_, err := h.ExtensionsClientset.Agents().Get(agentName)
+
+	if err != nil {
+		glog.Error(err)
 	}
+
+	agent := &ext_v1.Agent{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name: agentName,
+		},
+		Spec: agentData,
+	}
+
+	if api_errors.IsNotFound(err) {
+		h.cleanCacheOnDemand(nil)
+		agent, err = h.ExtensionsClientset.Agents().Create(agent)
+	} else {
+		agent, err = h.ExtensionsClientset.Agents().Update(agent)
+	}
+
+	if err != nil {
+		glog.Error(err)
+	}
+
+	h.AgentCache[agentName] = agent.Spec
+
+	h.Metrics[agentName] = NewAgentMetrics(&agentData)
 	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
 	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
-	h.AgentCache[agentName] = agentData
 }
 
 func (h *Handler) GetAgents(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ProcessResponse(rw, h.AgentCache)
+	agentsData := map[string]ext_v1.AgentSpec{}
+	agents, err := h.ExtensionsClientset.Agents().List()
+
+	if err != nil {
+		glog.Error(err)
+	}
+
+	for _, agent := range agents.Items {
+		agentsData[agent.ObjectMeta.Name] = agent.Spec
+	}
+
+	ProcessResponse(rw, agentsData)
 }
 
 func (h *Handler) GetSingleAgent(rw http.ResponseWriter, r *http.Request, rp httprouter.Params) {
-	aName := rp.ByName("name")
-	aData, exists := h.AgentCache[aName]
-	if !exists {
-		glog.V(5).Infof("Agent with name %v is not found in the cache", aName)
+	agentName := rp.ByName("name")
+	agent, err := h.ExtensionsClientset.Agents().Get(agentName)
+
+	if err != nil {
+		glog.Error(err)
+		return
+	}
+
+	if api_errors.IsNotFound(err) {
+		glog.V(5).Infof("Agent with name %v is not found in the cache", agentName)
 		http.Error(rw, "There is no such entry in the agent cache", http.StatusNotFound)
 		return
 	}
-	ProcessResponse(rw, aData)
+
+	ProcessResponse(rw, agent)
 }
 
 func (h *Handler) ConnectivityCheck(rw http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -164,14 +230,18 @@ func (h *Handler) CheckAgents() ([]string, []string, error) {
 	}
 	for _, pod := range pods.Items {
 		agentName := pod.ObjectMeta.Name
-		agentData, exists := h.AgentCache[agentName]
-		if !exists {
+		agent, err := h.ExtensionsClientset.Agents().Get(agentName)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if agent == nil {
 			absent = append(absent, agentName)
 			continue
 		}
 
-		delta := time.Now().Sub(agentData.LastUpdated).Seconds()
-		if delta > float64(agentData.ReportInterval*2) {
+		delta := time.Now().Sub(agent.Spec.LastUpdated).Seconds()
+		if delta > float64(agent.Spec.ReportInterval*2) {
 			outdated = append(outdated, agentName)
 		}
 	}

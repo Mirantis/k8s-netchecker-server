@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,46 +12,54 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package extensions
+package client
 
 import (
 	"bytes"
 	"encoding/json"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/apimachinery/pkg/watch"
-
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
+	api_v1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
+
+	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
 )
 
-// WrapClientsetWithExtensions function
+// WrapClientsetWithExtensions is a wrapper function for clientset
 func WrapClientsetWithExtensions(clientset *kubernetes.Clientset, config *rest.Config) (*WrappedClientset, error) {
 	restConfig := &rest.Config{}
 	*restConfig = *config
-	rest, err := extensionClient(restConfig)
+	rest, scheme, err := ExtensionClient(restConfig)
 	if err != nil {
 		return nil, err
 	}
 	return &WrappedClientset{
 		Client: rest,
+		Scheme: scheme,
 	}, nil
 }
 
-func extensionClient(config *rest.Config) (*rest.RESTClient, error) {
-	config.APIPath = "/apis"
-	config.ContentConfig = rest.ContentConfig{
-		GroupVersion: &schema.GroupVersion{
-			Group:   GroupName,
-			Version: Version,
-		},
-		NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: api.Codecs},
-		ContentType:          runtime.ContentTypeJSON,
+// ExtensionClient is a client initialization function
+func ExtensionClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
+	scheme := runtime.NewScheme()
+	if err := ext_v1.AddToScheme(scheme); err != nil {
+		return nil, nil, err
 	}
-	return rest.RESTClientFor(config)
+
+	config := *cfg
+	config.GroupVersion = &ext_v1.SchemeGroupVersion
+	config.APIPath = "/apis"
+	config.ContentType = runtime.ContentTypeJSON
+	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: serializer.NewCodecFactory(scheme)}
+
+	client, err := rest.RESTClientFor(&config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client, scheme, nil
 }
 
 // Clientset interface
@@ -62,16 +70,16 @@ type Clientset interface {
 // WrappedClientset structure
 type WrappedClientset struct {
 	Client *rest.RESTClient
+	Scheme *runtime.Scheme
 }
 
 // AgentsInterface interface
 type AgentsInterface interface {
-	Create(*Agent) (*Agent, error)
-	Get(name string) (*Agent, error)
-	List(api.ListOptions) (*AgentList, error)
-	Watch(api.ListOptions) (watch.Interface, error)
-	Update(*Agent) (*Agent, error)
-	Delete(string, *api.DeleteOptions) error
+	Create(*ext_v1.Agent) (*ext_v1.Agent, error)
+	Get(name string) (*ext_v1.Agent, error)
+	List() (*ext_v1.AgentList, error)
+	Update(*ext_v1.Agent) (*ext_v1.Agent, error)
+	Delete(string, *api_v1.DeleteOptions) error
 }
 
 // Agents function
@@ -89,10 +97,10 @@ func decodeResponseInto(resp []byte, obj interface{}) error {
 }
 
 // Create agent function
-func (c *AgentsClient) Create(agent *Agent) (result *Agent, err error) {
-	result = &Agent{}
+func (c *AgentsClient) Create(agent *ext_v1.Agent) (result *ext_v1.Agent, err error) {
+	result = &ext_v1.Agent{}
 	resp, err := c.client.Post().
-		Namespace(api.NamespaceDefault).
+		Namespace("default").
 		Resource("agents").
 		Body(agent).
 		DoRaw()
@@ -103,12 +111,11 @@ func (c *AgentsClient) Create(agent *Agent) (result *Agent, err error) {
 }
 
 // List agents function
-func (c *AgentsClient) List(opts api.ListOptions) (result *AgentList, err error) {
-	result = &AgentList{}
+func (c *AgentsClient) List() (result *ext_v1.AgentList, err error) {
+	result = &ext_v1.AgentList{}
 	resp, err := c.client.Get().
-		Namespace(api.NamespaceDefault).
+		Namespace("default").
 		Resource("agents").
-		LabelsSelectorParam(opts.LabelSelector).
 		DoRaw()
 	if err != nil {
 		return result, err
@@ -116,23 +123,13 @@ func (c *AgentsClient) List(opts api.ListOptions) (result *AgentList, err error)
 	return result, decodeResponseInto(resp, result)
 }
 
-// Watch agents function
-func (c *AgentsClient) Watch(opts api.ListOptions) (watch.Interface, error) {
-	return c.client.Get().
-		Namespace(api.NamespaceDefault).
-		Prefix("watch").
-		Resource("agents").
-		VersionedParams(&opts, api.ParameterCodec).
-		Watch()
-}
-
 // Update agents function
-func (c *AgentsClient) Update(agent *Agent) (result *Agent, err error) {
-	result = &Agent{}
+func (c *AgentsClient) Update(agent *ext_v1.Agent) (result *ext_v1.Agent, err error) {
+	result = &ext_v1.Agent{}
 	resp, err := c.client.Put().
-		Namespace(api.NamespaceDefault).
+		Namespace("default").
 		Resource("agents").
-		Name(agent.Metadata.Name).
+		Name(agent.ObjectMeta.Name).
 		Body(agent).
 		DoRaw()
 	if err != nil {
@@ -142,9 +139,9 @@ func (c *AgentsClient) Update(agent *Agent) (result *Agent, err error) {
 }
 
 // Delete agent function
-func (c *AgentsClient) Delete(name string, options *api.DeleteOptions) error {
+func (c *AgentsClient) Delete(name string, options *api_v1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(api.NamespaceDefault).
+		Namespace("default").
 		Resource("agents").
 		Name(name).
 		Body(options).
@@ -153,10 +150,10 @@ func (c *AgentsClient) Delete(name string, options *api.DeleteOptions) error {
 }
 
 // Get agent function
-func (c *AgentsClient) Get(name string) (result *Agent, err error) {
-	result = &Agent{}
+func (c *AgentsClient) Get(name string) (result *ext_v1.Agent, err error) {
+	result = &ext_v1.Agent{}
 	resp, err := c.client.Get().
-		Namespace(api.NamespaceDefault).
+		Namespace("default").
 		Resource("agents").
 		Name(name).
 		DoRaw()

@@ -21,9 +21,12 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+
+	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
 )
 
-func NewAgentMetrics(ai *AgentInfo) AgentMetrics {
+// NewAgentMetrics setup prometheus metrics
+func NewAgentMetrics(ai *ext_v1.AgentSpec) AgentMetrics {
 	am := AgentMetrics{
 		PodName: ai.PodName,
 	}
@@ -181,7 +184,7 @@ func UpdateAgentBaseMetrics(am AgentMetrics, report, error bool) {
 }
 
 // UpdateAgentProbeMetrics function updates HTTP probe metrics.
-func UpdateAgentProbeMetrics(ai AgentInfo, am AgentMetrics) {
+func UpdateAgentProbeMetrics(ai ext_v1.AgentSpec, am AgentMetrics) {
 
 	suffix := "private_network"
 	if strings.Contains(ai.PodName, "hostnet") {
