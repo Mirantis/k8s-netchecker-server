@@ -35,6 +35,8 @@ PURGE=${PURGE:-false}
 SERVER_IMAGE_NAME=${SERVER_IMAGE_NAME:-mirantis/k8s-netchecker-server}
 AGENT_IMAGE_NAME=${AGENT_IMAGE_NAME:-mirantis/k8s-netchecker-agent}
 IMAGE_TAG=${IMAGE_TAG:-latest}
+SERVER_IMAGE_TAG=${SERVER_IMAGE_TAG:-$IMAGE_TAG}
+AGENT_IMAGE_TAG=${AGENT_IMAGE_TAG:-$IMAGE_TAG}
 
 
 if [ "${KUBE_DIR}" != "." ] && [ -n "${KUBE_USER}" ]; then
@@ -55,7 +57,7 @@ metadata:
 spec:
   containers:
     - name: netchecker-server
-      image: ${SERVER_IMAGE_NAME}:${IMAGE_TAG}
+      image: ${SERVER_IMAGE_NAME}:${SERVER_IMAGE_TAG}
       imagePullPolicy: Always
       ports:
         - containerPort: 8081
@@ -100,7 +102,7 @@ spec:
     spec:
       containers:
         - name: netchecker-agent
-          image: ${AGENT_IMAGE_NAME}:${IMAGE_TAG}
+          image: ${AGENT_IMAGE_NAME}:${AGENT_IMAGE_TAG}
           env:
             - name: MY_NODE_NAME
               valueFrom:
@@ -135,7 +137,7 @@ spec:
       hostNetwork: True
       containers:
         - name: netchecker-agent
-          image: ${AGENT_IMAGE_NAME}:${IMAGE_TAG}
+          image: ${AGENT_IMAGE_NAME}:${AGENT_IMAGE_TAG}
           env:
             - name: MY_NODE_NAME
               valueFrom:
