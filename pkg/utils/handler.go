@@ -231,13 +231,14 @@ func (h *Handler) CheckAgents() ([]string, []string, error) {
 	for _, pod := range pods.Items {
 		agentName := pod.ObjectMeta.Name
 		agent, err := h.ExtensionsClientset.Agents().Get(agentName)
-		if err != nil {
-			return nil, nil, err
-		}
 
-		if agent == nil {
+		if api_errors.IsNotFound(err) {
 			absent = append(absent, agentName)
 			continue
+		}
+
+		if err != nil {
+			return nil, nil, err
 		}
 
 		delta := time.Now().Sub(agent.Spec.LastUpdated).Seconds()
