@@ -11,78 +11,86 @@
 
 ![Diagram](diagram.png)
 
-Network checker is a Kubernetes application main purpose of which is checking
+Network checker is a Kubernetes application. Its main purpose is checking
 of connectivity between the cluster's nodes. Network checker consists of two
 parts: server (this repository) and agent
 ([developed here](https://github.com/Mirantis/k8s-netchecker-agent)). Agents
-are deployed on every K8S node using
-[Daemonset mechanism](https://kubernetes.io/docs/admin/daemons/)
-(to ensure auto-management of the pods). Agents come in two flavors - and there
- exist two daemonsets for each kind. The difference between them is that
-"Agent-hostnet" is tapped into host network namespace via supplying
-`hostNetwork: True` key-value for corresponding Pod's spec. As shown on diagram
-both daemonsets are enabled for each node meaning one and only one pod of each
-kind will be present there; consequently those pods
-uniquely represent nodes inside server's internals.
+are deployed on every Kubernetes node using
+[Daemonset mechanism](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/). Agents come
+in two flavors - and default setup includes two corresponding daemonsets.
+The difference between them is that "Agent-hostnet" is tapped into host network
+namespace via supplying `hostNetwork: True` key-value for the corresponding
+Pod's specification. As shown on the diagram, both daemonsets are enabled for
+each node meaning exactly one pod of each kind will be deployed on each node.
 
-The agents then periodically gather network related information
-(e.g. interfaces' info, results of nslookup, etc.) and send formed payload to
-the server address in the K8S cluster's network space.
+The agents periodically gather network related information
+(e.g. interfaces' info, results of nslookup, results of latencies measurement,
+etc.) and send it to the server as periodic agent reports.
+Report includes agent pod name and its node name so that the report is uniquely
+identified using them.
 
-The server is deployed in dedicated Pod and exposed inside of the cluster via
-K8S service resource. Thus every agent can access the server by the service's
-DNS name.
+The server is deployed in a dedicated pod using
+[Deployment mechanism](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+and exposed inside of the cluster via Kubernetes service resource. Thus, every
+agent can access the server by the service's DNS name.
 
-Incoming agent data is stored in server's memory (this fact then implicates
-loss of the data when server application is shutdown or restarted; it is going
-to be reworked by adding a permanent storage in the future).
-The cache is represented as Go map data structure with an agent's pod name as
-unique key.
+Server processes the incoming agent data (agents' reports) and store it in
+persistent data storage - Kubernetes trird-party resources (TPR). New data type
+called `agent` was added into TPR, Kubernetes API was extended with this new
+type, and all related agent data is stored using it.
+Server also calculates metrics based on agent data. Metrics data is stored in
+server's memory for now - this implicates loss of metrics data when server
+application is shutdown or restarted; it is going to be reworked by moving to
+a persistent storage in future. 
 
-Server provides HTTP RESTful interface which for the time present consists of
-the following (verb - URI designator - meaning of the operation):
+Server provides HTTP RESTful interface which currently includes the following
+requests (verb - URI designator - meaning of the operation):
 
 - GET/POST - /api/v1/agents/{agent_name} - get, create/update agent's entry in
-  the agent cache
-- GET - /api/v1/agents/ - get the whole agent cache dump
+  the appropriate TPR.
+- GET - /api/v1/agents/ - get the whole agent data dump.
 - GET - /api/v1/connectivity_check - get result of connectivity check between
-  the server and the agents
+  the server and the agents.
+- GET - /metrics - get the network checker metrics.
 
 The main logic of network checking is implemented behind `connnectivity_check`
-endpoint. In order to determine whether connectivity is present between
-the server and agents former retrieves list of pods from K8S API having labels
-`netchecker-agent` and `netchecker-agent-hostnet`, then analyses its cache.
-Successful checking consists in meeting two criteria. First - there is entry in
-the cache for one of the retrieved pods; it means an agent request made through
-the network to the server consequently link is established and active between
-them. Second - difference between time of the check and point when the data was
-received from agent must not exceed the period of agent's reporting
-(there is field in the payload storing the period); in opposite case
-it will indicate that connection is lost and requests are not coming through.
+endpoint. It is the only user-facing URI.
+In order to determine whether connectivity is present between the server and
+agents, former retrieves the list of pods using Kubernetes API
+(filtering by labels `netchecker-agent` and `netchecker-agent-hostnet`), then
+analyses stored agent data.
+Success of the checking is determined based on two criteria. First - there is an
+entry in the stored data for the each retrieved agent's pod; it means an agent
+request has got through the network to the server. Consequently, link is
+established and active within the agent-server pair.
+Second - difference between the time of the check and the time when the data
+was received from particular agent must not exceed the period of agent's
+reporting (there is a field in the payload holding the report interval). In
+opposite case, it will indicate that connection is lost and requests are not
+coming through.
 Let us remember that each agent corresponds to one particular pod, unique for
-particular node, so connection between agents and server means
-connection between nodes on which all those components are deployed.
+particular node, so connection between agents and server means connection
+between the corresponding nodes.
 
 Results of connectivity check are represented in response from the endpoint
-particularly indicating possible problematic situation in the payload (e.g.
-there are dedicated field showing agents which haven't reported at all and
-those which reports are exceeding its interval). Users then can consume the
-data.
+particularly indicating possible problematic situation (e.g. there is an
+`Absent` field listing agents which haven't reported at all and `Outdated` one
+listing those which reports are out of their report intervals).
 
 One aspect of functioning of network checker is worth mentioning. Payloads sent
 by the agents are of relatively small byte size which in some cases can be less
-than MTU value set for the cluster's network link. When this happens the
+than MTU value set for the cluster's network links. When this happens, the
 network checker will not catch problems with network packet's fragmentation.
-For that reason special option can be used with the agent application -
+For that reason, special option can be used with the agent application -
 `-zeroextenderlength`. By default it has value of 1500. The parameter tells
 the agent to extend each payload by given length of zero bytes to exceed
-packet fragmentation trigger threshold. This dummy data then has no effect
-on the server's processing of the agent's requests.
+packet fragmentation trigger threshold. This dummy data has no effect on the
+server's processing of the agent's requests (reports).
 
 ## Usage
 
-To start the server inside k8s pod and listen on port 8081 use following
-arguments:
+To start the server inside Kubernetes pod and listen on port 8081 use the
+following command:
 
 ```bash
 server -v 5 -logtostderr -kubeproxyinit -endpoint 0.0.0.0:8081
@@ -99,14 +107,16 @@ additional option must be provided
 For other possibilities regarding testing, code and Docker images building etc.
 please refer to the Makefile.
 
-## Deployment on K8S cluster
+## Deployment in Kubernetes cluster
 
-For deployment two option can be used. One - `./examples/deploy.sh` script;
-users must provide all needed variables (e.g. name and tag for Docker images)
-by modifying of the script.
+In order to deploy the application two options can be used. 
 
-Deployment as helm chart: if users have
-[Helm](https://github.com/kubernetes/helm) installed on their K8S cluster
+First - using `./examples/deploy.sh` script. Users must provide all the needed
+environment variables (e.g. name and tag for Docker images) before running the
+script.
+
+Second - deploy as a helm chart. If users have
+[Helm](https://github.com/kubernetes/helm) installed on their Kubernetes cluster
 they can build the chart from its description (`./helm-chart/`) and then deploy
 it (please, use Helm's documentation for details).
 
