@@ -37,6 +37,7 @@ AGENT_IMAGE_NAME=${AGENT_IMAGE_NAME:-mirantis/k8s-netchecker-agent}
 IMAGE_TAG=${IMAGE_TAG:-latest}
 SERVER_IMAGE_TAG=${SERVER_IMAGE_TAG:-$IMAGE_TAG}
 AGENT_IMAGE_TAG=${AGENT_IMAGE_TAG:-$IMAGE_TAG}
+SERVER_PORT=${SERVER_PORT:-8081}
 
 
 if [ "${KUBE_DIR}" != "." ] && [ -n "${KUBE_USER}" ]; then
@@ -47,26 +48,33 @@ fi
 kubectl get nodes
 
 echo "Installing netchecker server"
-cat << EOF > "${KUBE_DIR}"/netchecker-server-pod.yml
-apiVersion: v1
-kind: Pod
+cat << EOF > "${KUBE_DIR}"/netchecker-server-dep.yml
+apiVersion: apps/v1beta1
+kind: Deployment
 metadata:
   name: netchecker-server
-  labels:
-    app: netchecker-server
 spec:
-  containers:
-    - name: netchecker-server
-      image: ${SERVER_IMAGE_NAME}:${SERVER_IMAGE_TAG}
-      imagePullPolicy: Always
-      ports:
-        - containerPort: 8081
-          hostPort: 8081
-      args:
-        - "-v=5"
-        - "-logtostderr"
-        - "-kubeproxyinit"
-        - "-endpoint=0.0.0.0:8081"
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: true
+        prometheus.io/port: ${SERVER_PORT}
+      name: netchecker-server
+      labels:
+        app: netchecker-server
+    spec:
+      containers:
+        - name: netchecker-server
+          image: ${SERVER_IMAGE_NAME}:${SERVER_IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: ${SERVER_PORT}
+          args:
+            - "-v=5"
+            - "-logtostderr"
+            - "-kubeproxyinit"
+            - "-endpoint=0.0.0.0:${SERVER_PORT}"
 EOF
 
 cat << EOF > "${KUBE_DIR}"/netchecker-server-svc.yml
@@ -80,8 +88,8 @@ spec:
   ports:
     -
       protocol: TCP
-      port: 8081
-      targetPort: 8081
+      port: ${SERVER_PORT}
+      targetPort: ${SERVER_PORT}
       nodePort: ${NODE_PORT}
   type: NodePort
 EOF
@@ -91,9 +99,11 @@ apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
   labels:
-    app: netchecker-agent-hostnet
+    app: netchecker-agent
   name: netchecker-agent
 spec:
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       name: netchecker-agent
@@ -115,9 +125,9 @@ spec:
           args:
             - "-v=5"
             - "-logtostderr"
-            - "-serverendpoint=netchecker-service:8081"
+            - "-serverendpoint=netchecker-service:${SERVER_PORT}"
             - "-reportinterval=60"
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 EOF
 
 cat << EOF > "${KUBE_DIR}"/netchecker-agent-hostnet-ds.yml
@@ -128,6 +138,8 @@ metadata:
     app: netchecker-agent-hostnet
   name: netchecker-agent-hostnet
 spec:
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       name: netchecker-agent-hostnet
@@ -150,9 +162,9 @@ spec:
           args:
             - "-v=5"
             - "-logtostderr"
-            - "-serverendpoint=netchecker-service:8081"
+            - "-serverendpoint=netchecker-service:${SERVER_PORT}"
             - "-reportinterval=60"
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 EOF
 
 if [ "${KUBE_DIR}" != "." ] && [ -n "${KUBE_USER}" ]; then
@@ -162,10 +174,10 @@ fi
 kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-agent-ds.yml "${REAL_NS}" || true
 kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-agent-hostnet-ds.yml "${REAL_NS}" || true
 kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-server-svc.yml "${REAL_NS}" || true
-(kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-server-pod.yml "${REAL_NS}" && sleep 10) || true
+(kubectl delete --grace-period=1 -f "${KUBE_DIR}"/netchecker-server-dep.yml "${REAL_NS}" && sleep 10) || true
 
 if [ "${PURGE}" != "true" ]; then
-  kubectl create -f "${KUBE_DIR}"/netchecker-server-pod.yml "${REAL_NS}"
+  kubectl create -f "${KUBE_DIR}"/netchecker-server-dep.yml "${REAL_NS}"
   kubectl create -f "${KUBE_DIR}"/netchecker-server-svc.yml "${REAL_NS}"
   kubectl create -f "${KUBE_DIR}"/netchecker-agent-ds.yml "${REAL_NS}"
   kubectl create -f "${KUBE_DIR}"/netchecker-agent-hostnet-ds.yml "${REAL_NS}"
