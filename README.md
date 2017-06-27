@@ -16,7 +16,7 @@ of connectivity between the cluster's nodes. Network checker consists of two
 parts: server (this repository) and agent
 ([developed here](https://github.com/Mirantis/k8s-netchecker-agent)). Agents
 are deployed on every Kubernetes node using
-[Daemonset mechanism](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/).
+[Daemonset](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/).
 Agents come in two flavors - and default setup includes two corresponding
 daemonsets. The difference between them is that "Agent-hostnet" is tapped into
 host network namespace via supplying `hostNetwork: True` key-value for the
@@ -31,14 +31,14 @@ Report includes agent pod name and its node name so that the report is uniquely
 identified using them.
 
 The server is deployed in a dedicated pod using
-[Deployment mechanism](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+[Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 and exposed inside of the cluster via Kubernetes service resource. Thus, every
 agent can access the server by the service's DNS name.
 
 Server processes the incoming agent data (agents' reports) and store it in
-persistent data storage - Kubernetes trird-party resources (TPR). New data type
-called `agent` was added into TPR, Kubernetes API was extended with this new
-type, and all related agent data is stored using it.
+persistent data storage - using Kubernetes third party resources (TPR). New data
+type called `agent` was added into TPR, Kubernetes API was extended with this
+new type, and all related agent data is stored using it.
 Server also calculates metrics based on agent data. Metrics data is stored in
 server's memory for now - this implicates loss of metrics data when server
 application is shutdown or restarted; it is going to be reworked by moving to
