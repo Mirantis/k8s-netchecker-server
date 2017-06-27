@@ -42,7 +42,7 @@ type, and all related agent data is stored using it.
 Server also calculates metrics based on agent data. Metrics data is stored in
 server's memory for now - this implicates loss of metrics data when server
 application is shutdown or restarted; it is going to be reworked by moving to
-a persistent storage in future. 
+a persistent storage in future.
 
 Server provides HTTP RESTful interface which currently includes the following
 requests (verb - URI designator - meaning of the operation):
