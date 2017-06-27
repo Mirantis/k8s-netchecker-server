@@ -16,12 +16,13 @@ of connectivity between the cluster's nodes. Network checker consists of two
 parts: server (this repository) and agent
 ([developed here](https://github.com/Mirantis/k8s-netchecker-agent)). Agents
 are deployed on every Kubernetes node using
-[Daemonset mechanism](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/). Agents come
-in two flavors - and default setup includes two corresponding daemonsets.
-The difference between them is that "Agent-hostnet" is tapped into host network
-namespace via supplying `hostNetwork: True` key-value for the corresponding
-Pod's specification. As shown on the diagram, both daemonsets are enabled for
-each node meaning exactly one pod of each kind will be deployed on each node.
+[Daemonset mechanism](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/).
+Agents come in two flavors - and default setup includes two corresponding
+daemonsets. The difference between them is that "Agent-hostnet" is tapped into
+host network namespace via supplying `hostNetwork: True` key-value for the
+corresponding Pod's specification. As shown on the diagram, both daemonsets
+are enabled for each node meaning exactly one pod of each kind will be deployed
+on each node.
 
 The agents periodically gather network related information
 (e.g. interfaces' info, results of nslookup, results of latencies measurement,
@@ -109,7 +110,7 @@ please refer to the Makefile.
 
 ## Deployment in Kubernetes cluster
 
-In order to deploy the application two options can be used. 
+In order to deploy the application two options can be used.
 
 First - using `./examples/deploy.sh` script. Users must provide all the needed
 environment variables (e.g. name and tag for Docker images) before running the
