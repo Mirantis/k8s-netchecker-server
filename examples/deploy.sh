@@ -34,7 +34,7 @@ NODE_PORT=${NODE_PORT:-31081}
 PURGE=${PURGE:-false}
 SERVER_IMAGE_NAME=${SERVER_IMAGE_NAME:-mirantis/k8s-netchecker-server}
 AGENT_IMAGE_NAME=${AGENT_IMAGE_NAME:-mirantis/k8s-netchecker-agent}
-IMAGE_TAG=${IMAGE_TAG:-latest}
+IMAGE_TAG=${IMAGE_TAG:-stable}
 SERVER_IMAGE_TAG=${SERVER_IMAGE_TAG:-$IMAGE_TAG}
 AGENT_IMAGE_TAG=${AGENT_IMAGE_TAG:-$IMAGE_TAG}
 SERVER_PORT=${SERVER_PORT:-8081}
@@ -58,8 +58,8 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io/scrape: true
-        prometheus.io/port: ${SERVER_PORT}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "${SERVER_PORT}"
       name: netchecker-server
       labels:
         app: netchecker-server

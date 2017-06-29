@@ -7,8 +7,8 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io/scrape: true
-        prometheus.io/port: 8081
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
       name: netchecker-server
       labels:
         app: netchecker-server
@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: netchecker-server
-          image: mirantis/k8s-netchecker-server:latest
+          image: mirantis/k8s-netchecker-server:stable
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8081
