@@ -39,16 +39,18 @@ type Handler struct {
 	ExtensionsClientset ext_client.Clientset
 }
 
-func NewHandler(createKubeClient bool) (*Handler, error) {
+func NewHandler() (*Handler, error) {
 	h := &Handler{
 		AgentCache: map[string]ext_v1.AgentSpec{},
 		Metrics:    map[string]AgentMetrics{},
 	}
 
+	appConfig := utils.GetOrCreateConfig()
+
 	var err error
 	var clientset *kubernetes.Clientset
 
-	if createKubeClient {
+	if appConfig.UseKubeClient {
 		proxy := &KubeProxy{}
 
 		config, err := proxy.buildConfig()

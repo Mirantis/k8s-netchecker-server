@@ -23,20 +23,21 @@ import (
 )
 
 func main() {
-	var endpoint string
-	var initKubeProxy bool
-	flag.StringVar(&endpoint, "endpoint", "0.0.0.0:8081", "End point (IP address, port) for server to listen on")
-	flag.BoolVar(&initKubeProxy, "kubeproxyinit", false, "Control initialization kubernetes client set for connectivity check")
+	config := utils.GetOrCreateConfig()
+
+	flag.StringVar(&config.HttpListen, "endpoint", "0.0.0.0:8081", "End point (IP address, port) for server to listen on")
+	flag.BoolVar(&config.UseKubeClient, "kubeproxyinit", false, "Control initialization kubernetes client set for connectivity check")
+	flag.StringVar(&config.EtcdEndpoints, "etcd-endpoints", "", "Etcd endpoints list for store states into etcd instead k8s 3d-party resources")
 	flag.Parse()
 
-	glog.V(5).Infof("Start listening on %v", endpoint)
+	glog.V(5).Infof("Start listening on %v", config.HttpListen)
 
-	handler, err := utils.NewHandler(initKubeProxy)
+	handler, err := utils.NewHandler()
 	if err != nil {
 		glog.Errorf("Error while setting up the handler. Details: %v", err)
 		panic(err.Error())
 	}
 
 	go handler.CollectAgentsMetrics()
-	glog.Fatal(http.ListenAndServe(endpoint, handler.HTTPHandler))
+	glog.Fatal(http.ListenAndServe(config.HttpListen, handler.HTTPHandler))
 }
