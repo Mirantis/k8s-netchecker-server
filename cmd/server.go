@@ -22,6 +22,8 @@ import (
 	"github.com/golang/glog"
 )
 
+var version string
+
 func main() {
 	config := utils.GetOrCreateConfig()
 
@@ -29,6 +31,7 @@ func main() {
 	flag.BoolVar(&config.UseKubeClient, "kubeproxyinit", false, "Control initialization kubernetes client set for connectivity check")
 	flag.StringVar(&config.EtcdEndpoints, "etcd-endpoints", "", "Etcd endpoints list for store states into etcd instead k8s 3d-party resources")
 	flag.Parse()
+	glog.Infof("K8s netchecker. Compiled at: %s", version)
 
 	glog.V(5).Infof("Start listening on %v", config.HttpListen)
 

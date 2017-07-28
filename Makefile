@@ -30,6 +30,8 @@ ROOT_DIR = $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 # "v1.4", "v1.5" and "v1.6".
 DIND_CLUSTER_VERSION ?= v1.5
 
+VERSION=$(shell date +'%Y%m%d-%H:%M:%S-%Z')
+
 ENV_PREPARE_MARKER = .env-prepare.complete
 BUILD_IMAGE_MARKER = .build-image.complete
 
@@ -37,7 +39,7 @@ BUILD_IMAGE_MARKER = .build-image.complete
 ifeq ($(DOCKER_BUILD), yes)
 	_DOCKER_GOPATH = /go
 	_DOCKER_WORKDIR = $(_DOCKER_GOPATH)/src/github.com/Mirantis/k8s-netchecker-server/
-	_DOCKER_IMAGE  = golang:1.7
+	_DOCKER_IMAGE  = xenolog/golang:latest
 	DOCKER_DEPS = apt-get update; apt-get install -y libpcap-dev;
 	DOCKER_EXEC = docker run --rm -it -v "$(ROOT_DIR):$(_DOCKER_WORKDIR)" \
 		-w "$(_DOCKER_WORKDIR)" $(_DOCKER_IMAGE)
@@ -141,7 +143,7 @@ $(VENDOR_DIR):
 
 $(BUILD_DIR)/server: $(BUILD_DIR) $(VENDOR_DIR)
 	$(DOCKER_EXEC) bash -xc '$(DOCKER_DEPS) \
-		CGO_ENABLED=0 go build --ldflags "-s -w" \
+		CGO_ENABLED=0 go build --ldflags "-s -w -X main.version=${VERSION}" \
 		-x -o $@ ./cmd/server.go; \
 		chown $(shell id -u):$(shell id -g) -R $(BUILD_DIR)'
 

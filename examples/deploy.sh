@@ -185,8 +185,11 @@ fi
 
 set +o xtrace
 echo "DONE"
-echo "Use the following commands to "
-echo "- check agents responses:"
-echo "  curl -s -X GET 'http://localhost:${NODE_PORT}/api/v1/agents/' | python -mjson.tool"
-echo "- check connectivity with agents:"
-echo "  curl -X GET 'http://localhost:${NODE_PORT}/api/v1/connectivity_check'"
+
+if [ "${PURGE}" != "true" ]; then
+  echo "Use the following commands to "
+  echo "- check agents responses:"
+  echo "  curl -s -X GET 'http://localhost:${NODE_PORT}/api/v1/agents/' | python -mjson.tool"
+  echo "- check connectivity with agents:"
+  echo "  curl -X GET 'http://localhost:${NODE_PORT}/api/v1/connectivity_check'"
+fi
