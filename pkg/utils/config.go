@@ -28,6 +28,7 @@ type AppConfig struct {
 	configured     bool   // flag whether App configured
 	UseKubeClient  bool   //
 	EtcdEndpoints  string // how to connect to etcd
+	EtcdTree       string // Root of NetChecker tree into etcd
 	HttpListen     string // IPaddress:PORT for HTTP control API responder
 	PingTimeout    time.Duration
 	ReportTimeout  time.Duration

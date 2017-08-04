@@ -29,6 +29,7 @@ type AgentSpec struct {
 	NodeName       string              `json:"nodename"`
 	PodName        string              `json:"podname"`
 	HostDate       time.Time           `json:"hostdate"`
+	Uptime         uint64              `json:"uptime"`
 	LastUpdated    time.Time           `json:"last_updated"`
 	LookupHost     map[string][]string `json:"nslookup"`
 	NetworkProbes  []ProbeResult       `json:"network_probes"`
