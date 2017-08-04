@@ -38,7 +38,7 @@ func NewHandler() (*Handler, error) {
 		h.Agents, err = NewK8sStorer()
 	} else {
 		// use etcd for store states instead k8s 3d-part
-		// h.Agents, err = NewEtcdStorer()
+		h.Agents, err = NewEtcdStorer()
 	}
 
 	if err == nil {

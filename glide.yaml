@@ -38,3 +38,7 @@ import:
   version: v0.8.0
   subpackages:
   - prometheus/promhttp
+- package: github.com/coreos/etcd
+  version: ^3.2.5
+  subpackages:
+  - client

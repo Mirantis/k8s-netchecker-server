@@ -35,11 +35,7 @@ type k8sAgentStorage struct {
 	ExtensionsClientset ext_client.Clientset
 }
 
-func NewK8sStorer() (*k8sAgentStorage, error) {
-	rv := &k8sAgentStorage{
-		NcAgentCache: map[string]ext_v1.AgentSpec{},
-	}
-
+func connect2k8s() (Proxy, ext_client.Clientset, error) {
 	var err error
 	var clientset *kubernetes.Clientset
 
@@ -48,27 +44,38 @@ func NewK8sStorer() (*k8sAgentStorage, error) {
 	config, err := proxy.buildConfig()
 	if err != nil {
 		glog.Error(err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	clientset, err = proxy.SetupClientSet(config)
-	if err == nil {
-		rv.KubeClient = proxy
+	if err != nil {
+		glog.Error(err)
+		return nil, nil, err
 	}
 
 	err = ext_client.CreateAgentThirdPartyResource(clientset)
 	if err != nil && !api_errors.IsAlreadyExists(err) {
 		glog.Error(err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	ext, err := ext_client.WrapClientsetWithExtensions(clientset, config)
 	if err != nil {
 		glog.Error(err)
-		return nil, err
+		return nil, nil, err
 	}
 
-	rv.ExtensionsClientset = ext
+	return proxy, ext, err
+}
+
+func NewK8sStorer() (*k8sAgentStorage, error) {
+	var err error
+
+	rv := &k8sAgentStorage{
+		NcAgentCache: map[string]ext_v1.AgentSpec{},
+	}
+
+	rv.KubeClient, rv.ExtensionsClientset, err = connect2k8s()
 
 	return rv, err
 }
@@ -85,11 +92,7 @@ func (h *k8sAgentStorage) UpdateAgents(rw http.ResponseWriter, r *http.Request, 
 	glog.V(10).Infof("Updating the agents resource with value: %v", agentData)
 
 	agentName := rp.ByName("name")
-	// ags := h.ExtensionsClientset.Agents()
-	// glog.Infoln("*** ags:", ags)
-	// agsl, _ := ags.List()
-	// glog.Infoln("*** ags list:", agsl)
-	// _, err = ags.Get(agentName)
+
 	_, err = h.ExtensionsClientset.Agents().Get(agentName)
 
 	if err != nil {

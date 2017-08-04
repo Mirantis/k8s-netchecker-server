@@ -16,7 +16,6 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 	"sync"
@@ -24,16 +23,14 @@ import (
 )
 
 type AppConfig struct {
-	sync.Mutex            // extend for ensures atomic writes; protects the following fields
-	configured     bool   // flag whether App configured
-	UseKubeClient  bool   //
-	EtcdEndpoints  string // how to connect to etcd
-	EtcdTree       string // Root of NetChecker tree into etcd
-	HttpListen     string // IPaddress:PORT for HTTP control API responder
-	PingTimeout    time.Duration
-	ReportTimeout  time.Duration
-	ReportTTL      time.Duration
-	ReportInterval time.Duration
+	sync.Mutex                  // extend for ensures atomic writes; protects the following fields
+	configured    bool          // flag whether App configured
+	UseKubeClient bool          //
+	EtcdEndpoints string        // how to connect to etcd
+	EtcdTree      string        // Root of NetChecker tree into etcd
+	HttpListen    string        // IPaddress:PORT for HTTP control API responder
+	PingTimeout   time.Duration // Timeout for ping (to etcd) operations
+	ReportTTL     time.Duration // TTL for Agent report
 }
 
 var main_config *AppConfig
@@ -44,7 +41,6 @@ func (c *AppConfig) ToJson() ([]byte, error) {
 		err error
 	)
 	if rv, err = json.Marshal(c); err != nil {
-		//rv = []byte([])
 		glog.Errorln(err.Error())
 	}
 	return rv, err
@@ -56,35 +52,12 @@ func (c *AppConfig) ToYaml() ([]byte, error) {
 		err error
 	)
 	if rv, err = yaml.Marshal(c); err != nil {
-		//rv = []
 		glog.Errorln(err.Error())
 	}
 	return rv, err
 }
 
-func (c *AppConfig) String() string {
-	var (
-		rv  string
-		brv []byte
-		err error
-	)
-	if brv, err = c.ToYaml(); err != nil {
-		rv = fmt.Sprintf("---\nerror: %v", err.Error())
-		glog.Errorln(err.Error())
-	} else {
-		rv = fmt.Sprintf("%s", brv)
-	}
-	return rv
-}
-
 func GetOrCreateConfig() *AppConfig {
-	if !main_config.configured {
-		main_config.PingTimeout = 5 * time.Second
-		main_config.ReportTimeout = 10 * time.Second
-		main_config.ReportTTL = 5 * time.Minute
-		main_config.ReportInterval = 20 * time.Second
-		main_config.configured = true
-	}
 	return main_config
 }
 

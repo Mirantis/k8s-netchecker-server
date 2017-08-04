@@ -39,6 +39,16 @@ SERVER_IMAGE_TAG=${SERVER_IMAGE_TAG:-$IMAGE_TAG}
 AGENT_IMAGE_TAG=${AGENT_IMAGE_TAG:-$IMAGE_TAG}
 SERVER_PORT=${SERVER_PORT:-8081}
 
+if [ -z ${USE_ETCD_ENDPOINT} ] ; then
+  # use 3rd party resource API for store agents state
+  SERVER_ENV_TAIL="-kubeproxyinit"
+else
+  # use ETCD for store agent reports
+  ETCD_ENDPOINT=${ETCD_ENDPOINT:-"https://localhost:2379"}
+  EEPS=$(etcdctl --endpoints=${ETCD_ENDPOINT} member list | awk '{print $4}' | awk -F'=' '{print $2}' | paste -sd "," -)
+  SERVER_ENV_TAIL="-etcd-endpoints=${EEPS}"
+fi
+
 
 if [ "${KUBE_DIR}" != "." ] && [ -n "${KUBE_USER}" ]; then
   mkdir -p "${KUBE_DIR}"
@@ -73,8 +83,8 @@ spec:
           args:
             - "-v=5"
             - "-logtostderr"
-            - "-kubeproxyinit"
             - "-endpoint=0.0.0.0:${SERVER_PORT}"
+            - "${SERVER_ENV_TAIL}"
 EOF
 
 cat << EOF > "${KUBE_DIR}"/netchecker-server-svc.yml

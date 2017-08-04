@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"time"
 
 	"github.com/Mirantis/k8s-netchecker-server/pkg/utils"
 	"github.com/golang/glog"
@@ -25,13 +26,24 @@ import (
 var version string
 
 func main() {
+	var (
+		repTTL      int
+		pingTimeout int
+	)
+
 	config := utils.GetOrCreateConfig()
 
 	flag.StringVar(&config.HttpListen, "endpoint", "0.0.0.0:8081", "End point (IP address, port) for server to listen on")
 	flag.BoolVar(&config.UseKubeClient, "kubeproxyinit", false, "Control initialization kubernetes client set for connectivity check")
+	flag.IntVar(&repTTL, "report-ttl", 300, "TTL for report results store into ETCD (sec)")
+	flag.IntVar(&pingTimeout, "ping-timeout", 5, "Timeout for ping ETCD server (sec)")
 	flag.StringVar(&config.EtcdEndpoints, "etcd-endpoints", "", "Etcd endpoints list for store states into etcd instead k8s 3d-party resources")
+	flag.StringVar(&config.EtcdTree, "etcd-tree", "netchecker", "Root of tree into Etcd")
 	flag.Parse()
 	glog.Infof("K8s netchecker. Compiled at: %s", version)
+
+	config.ReportTTL = time.Duration(repTTL) * time.Second
+	config.PingTimeout = time.Duration(pingTimeout) * time.Second
 
 	glog.V(5).Infof("Start listening on %v", config.HttpListen)
 
