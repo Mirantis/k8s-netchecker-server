@@ -195,8 +195,14 @@ func (h *k8sAgentStorage) AgentCache() NcAgentCache {
 	return h.NcAgentCache
 }
 
-func (h *k8sAgentStorage) AgentCacheUpdate(key string, ag *ext_v1.Agent) {
-	//todo: Whether should I implement this, or not???
+func (h *k8sAgentStorage) AgentCacheUpdate(key string, ag *ext_v1.AgentSpec) {
+	// Required for tests
+	h.NcAgentCache[key] = *ag
+}
+
+func (h *k8sAgentStorage) SetKubeClient(cl Proxy) {
+	// Required for tests
+	h.KubeClient = cl
 }
 
 func (h *k8sAgentStorage) CleanCacheOnDemand(rw http.ResponseWriter) {

@@ -30,8 +30,10 @@ type AgentStorer interface {
 	CleanCacheOnDemand(http.ResponseWriter)
 	CheckAgents() ([]string, []string, error)
 	//
-	AgentCache() NcAgentCache               // Returns Agent Cache map (RO)
-	AgentCacheUpdate(string, *ext_v1.Agent) // (agentName, agent.Spec) may be interface{} should be used, because format is storage-specific
+	AgentCache() NcAgentCache                   // Returns Agent Cache map (RO)
+	AgentCacheUpdate(string, *ext_v1.AgentSpec) // (agentName, agent.Spec) may be interface{} should be used, because format is storage-specific
+	// required for tests
+	SetKubeClient(cl Proxy)
 }
 
 type Handler struct {

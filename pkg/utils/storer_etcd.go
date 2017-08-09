@@ -284,8 +284,13 @@ func (s *EtcdAgentStorage) AgentCache() NcAgentCache {
 	return rv
 }
 
-func (h *EtcdAgentStorage) AgentCacheUpdate(key string, ag *ext_v1.Agent) {
+func (h *EtcdAgentStorage) AgentCacheUpdate(key string, ag *ext_v1.AgentSpec) {
 	//todo: Whether should I implement this, or not???
+}
+
+func (h *EtcdAgentStorage) SetKubeClient(cl Proxy) {
+	// Required for tests
+	h.k8s.KubeClient = cl
 }
 
 func (h *EtcdAgentStorage) CleanCacheOnDemand(rw http.ResponseWriter) {
