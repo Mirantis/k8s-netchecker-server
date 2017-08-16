@@ -37,10 +37,12 @@ import (
 )
 
 func newHandler() *Handler {
-	return &Handler{
-		AgentCache: map[string]ext_v1.AgentSpec{},
-		Metrics:    map[string]AgentMetrics{},
+	h := Handler{
+		Metrics: NcAgentMetrics{}, //map[string]AgentMetrics{},
 	}
+	h.Agents, _ = NewK8sStorer()
+
+	return &h
 }
 
 func agentExample() ext_v1.AgentSpec {
@@ -48,6 +50,7 @@ func agentExample() ext_v1.AgentSpec {
 		ReportInterval: 5,
 		NodeName:       "test-node",
 		PodName:        "test",
+		Uptime:         65536,
 		HostDate:       time.Now(),
 		NetworkProbes:  []ext_v1.ProbeResult{{"http://0.0.0.0:8081", 1, 200, 50, 1, 0, 0, 0, 0}},
 	}
@@ -60,7 +63,7 @@ func checkRespStatus(expected, actual int, t *testing.T) {
 }
 
 func checkCacheKey(h *Handler, key string, expected bool, t *testing.T) {
-	_, exists := h.AgentCache[key]
+	_, exists := h.Agents.AgentCache()[key]
 	if exists != expected {
 		t.Errorf("Presence of the key %v in AgentCache must be %v", key, expected)
 	}
@@ -114,7 +117,7 @@ func TestUpdateAgents(t *testing.T) {
 
 	checkCacheKey(handler, "test", true, t)
 
-	aData := handler.AgentCache["test"]
+	aData := handler.Agents.AgentCache()["test"]
 
 	expected := marshalExpectedWithActualDate(expectedAgent, aData, t)
 
@@ -126,7 +129,7 @@ func TestUpdateAgents(t *testing.T) {
 	if !bytes.Equal(expected, actual) {
 		t.Errorf(
 			"Actual data from AgentCache %v is not as expected %v",
-			handler.AgentCache["test"],
+			handler.Agents.AgentCache()["test"],
 			expectedAgent)
 	}
 }
@@ -189,14 +192,15 @@ func TestUpdateAgentsFailReadBody(t *testing.T) {
 func TestGetAgents(t *testing.T) {
 	t.Skip("Skip get agents")
 	handler := newHandler()
-	handler.AgentCache["test"] = agentExample()
-	expected, err := json.Marshal(handler.AgentCache)
+	age := agentExample()
+	handler.Agents.AgentCacheUpdate("test", &age)
+	expected, err := json.Marshal(handler.Agents.AgentCache())
 	if err != nil {
 		t.Errorf("Failed to marshal AgentCache (making expected byte array). Details: %v", err)
 	}
 
 	router := httprouter.New()
-	router.GET("/api/v1/agents/", handler.CleanCache(handler.GetAgents))
+	router.GET("/api/v1/agents/", handler.CleanCache(handler.Agents.GetAgents))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -214,10 +218,11 @@ func TestGetAgents(t *testing.T) {
 func TestGetSingleAgent(t *testing.T) {
 	t.Skip("Skip get single agent")
 	handler := newHandler()
-	handler.AgentCache["test"] = agentExample()
+	age := agentExample()
+	handler.Agents.AgentCacheUpdate("test", &age)
 
 	router := httprouter.New()
-	router.GET("/api/v1/agents/:name", handler.GetSingleAgent)
+	router.GET("/api/v1/agents/:name", handler.Agents.GetSingleAgent)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -228,7 +233,7 @@ func TestGetSingleAgent(t *testing.T) {
 
 	actual := readBodyBytesOrFail(resp, t)
 
-	bExpected, err := json.Marshal(handler.AgentCache["test"])
+	bExpected, err := json.Marshal(handler.Agents.AgentCache()["test"])
 	if err != nil {
 		t.Errorf("Failed to marshal expected data with last_updated field. Details: %v", err)
 	}
@@ -241,13 +246,14 @@ func TestGetSingleAgent(t *testing.T) {
 func TestGetSingleAgentCleanCache(t *testing.T) {
 	t.Skip("Skip get single agent cache")
 	handler := newHandler()
-	handler.AgentCache["test"] = agentExample()
-	handler.AgentCache["agent-pod"] = agentExample()
+	age := agentExample()
+	handler.Agents.AgentCacheUpdate("test", &age)
+	handler.Agents.AgentCacheUpdate("test-pod", &age)
 
-	handler.KubeClient = &KubeProxy{Client: CSwithPods()}
+	handler.Agents.SetKubeClient(&KubeProxy{Client: CSwithPods()})
 
 	router := httprouter.New()
-	router.GET("/api/v1/agents/:name", handler.CleanCache(handler.GetSingleAgent))
+	router.GET("/api/v1/agents/:name", handler.CleanCache(handler.Agents.GetSingleAgent))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -258,7 +264,7 @@ func TestGetSingleAgentCleanCache(t *testing.T) {
 
 	readBodyBytesOrFail(resp, t)
 
-	if _, exists := handler.AgentCache["test"]; exists {
+	if _, exists := handler.Agents.AgentCache()["test"]; exists {
 		t.Errorf("Key %v should not be present in the cache", "test")
 	}
 }
@@ -329,23 +335,23 @@ func decodeCnntyRespOrFail(resp *http.Response, t *testing.T) *CheckConnectivity
 func TestConnectivityCheckSuccess(t *testing.T) {
 	t.Skip("Skip get single agent cache")
 	handler := newHandler()
-	handler.KubeClient = &KubeProxy{Client: CSwithPods()}
+	handler.Agents.SetKubeClient(&KubeProxy{Client: CSwithPods()})
 
 	agent := agentExample()
 	agent.LastUpdated = agent.HostDate
 
 	agent.PodName = "agent-pod"
-	handler.AgentCache[agent.PodName] = agent
+	handler.Agents.AgentCacheUpdate(agent.PodName, &agent)
 
 	agent.PodName = "agent-pod-hostnet"
-	handler.AgentCache[agent.PodName] = agent
+	handler.Agents.AgentCacheUpdate(agent.PodName, &agent)
 
 	ts := createCnntyCheckTestServer(handler)
 	defer ts.Close()
 
 	actual := decodeCnntyRespOrFail(cnntyRespOrFail(ts.URL, http.StatusOK, t), t)
 	successfulMsg := fmt.Sprintf(
-		"All %v pods successfully reported back to the server", len(handler.AgentCache))
+		"All %v pods successfully reported back to the server", len(handler.Agents.AgentCache()))
 	if actual.Message != successfulMsg {
 		t.Errorf(
 			"Unexpected message from successful result payload. Actual: %v",
@@ -356,11 +362,11 @@ func TestConnectivityCheckSuccess(t *testing.T) {
 func TestMetricsGetSuccess(t *testing.T) {
 	t.Skip("Skip get single agent cache")
 	handler := newHandler()
-	handler.KubeClient = &KubeProxy{Client: CSwithPods()}
+	handler.Agents.SetKubeClient(&KubeProxy{Client: CSwithPods()})
 
 	agent := agentExample()
 	agent.PodName = "agent-pod"
-	handler.AgentCache[agent.PodName] = agent
+	handler.Agents.AgentCacheUpdate(agent.PodName, &agent)
 
 	ts := createCnntyCheckTestServer(handler)
 	defer ts.Close()
@@ -371,7 +377,7 @@ func TestMetricsGetSuccess(t *testing.T) {
 func TestConnectivityCheckFail(t *testing.T) {
 	t.Skip("Skip get single agent cache")
 	handler := newHandler()
-	handler.KubeClient = &KubeProxy{Client: CSwithPods()}
+	handler.Agents.SetKubeClient(&KubeProxy{Client: CSwithPods()})
 
 	agent := agentExample()
 
@@ -380,7 +386,7 @@ func TestConnectivityCheckFail(t *testing.T) {
 	agent.LastUpdated = agent.HostDate.Add(
 		-time.Second * time.Duration(agent.ReportInterval*2+1))
 
-	handler.AgentCache[agent.PodName] = agent
+	handler.Agents.AgentCacheUpdate(agent.PodName, &agent)
 
 	ts := createCnntyCheckTestServer(handler)
 	defer ts.Close()
@@ -412,7 +418,8 @@ func (fp *FakeProxy) Pods() (*v1.PodList, error) {
 
 func TestConnectivityCheckFailDueError(t *testing.T) {
 	handler := newHandler()
-	handler.KubeClient = &FakeProxy{}
+	handler.Agents.SetKubeClient(&FakeProxy{})
+
 	ts := createCnntyCheckTestServer(handler)
 	defer ts.Close()
 

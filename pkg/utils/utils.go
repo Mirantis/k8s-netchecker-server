@@ -32,7 +32,6 @@ func (ep *errProcessor) ReadBody(req *http.Request) []byte {
 	if ep.err != nil {
 		return nil
 	}
-	body := make([]byte, req.ContentLength)
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		ep.err = errors.New(
