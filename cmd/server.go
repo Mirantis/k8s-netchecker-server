@@ -33,12 +33,14 @@ func main() {
 
 	config := utils.GetOrCreateConfig()
 
-	flag.StringVar(&config.HttpListen, "endpoint", "0.0.0.0:8081", "End point (IP address, port) for server to listen on")
-	flag.BoolVar(&config.UseKubeClient, "kubeproxyinit", false, "Control initialization kubernetes client set for connectivity check")
-	flag.IntVar(&repTTL, "report-ttl", 300, "TTL for report results store into ETCD (sec)")
-	flag.IntVar(&pingTimeout, "ping-timeout", 5, "Timeout for ping ETCD server (sec)")
-	flag.StringVar(&config.EtcdEndpoints, "etcd-endpoints", "", "Etcd endpoints list for store states into etcd instead k8s 3d-party resources")
-	flag.StringVar(&config.EtcdTree, "etcd-tree", "netchecker", "Root of tree into Etcd")
+	flag.StringVar(&config.HttpListen, "endpoint", "0.0.0.0:8081", "Endpoint (IP address, port) for server to listen on")
+	flag.BoolVar(&config.UseKubeClient, "kubeproxyinit", false, "use k8s TPR (true) or Etcd (false) as a data storage")
+	flag.IntVar(&repTTL, "report-ttl", 300, "TTL for agents reports data stored in Etcd (sec)")
+	flag.IntVar(&pingTimeout, "ping-timeout", 5, "Etcd server ping timeout (sec)")
+	flag.StringVar(&config.EtcdEndpoints, "etcd-endpoints", "", "Etcd server endpoints list")
+	flag.StringVar(&config.EtcdTree, "etcd-tree", "netchecker", "Root of Etcd tree")
+	flag.StringVar(&config.EtcdKeyFile, "etcd-key", "", "SSL key file when using HTTPS to connect to etcd")
+	flag.StringVar(&config.EtcdCertFile, "etcd-cert", "", "SSL certificate file when using HTTPS to connect to etcd")
 	flag.Parse()
 	glog.Infof("K8s netchecker. Compiled at: %s", version)
 

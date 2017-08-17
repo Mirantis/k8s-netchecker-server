@@ -65,6 +65,16 @@ func NewEtcdStorer() (*EtcdAgentStorage, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 	}
+	if (cfg.EtcdKeyFile != "") && (cfg.EtcdCertFile != "") {
+		cert, err := tls.LoadX509KeyPair(cfg.EtcdCertFile, cfg.EtcdKeyFile)
+		if err != nil {
+			glog.Fatalf("Error loading X509 key pair: %s", err)
+		}
+		tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		}
+	}
 
 	httpsTransport := &http.Transport{
 		TLSHandshakeTimeout: 10 * time.Second,
@@ -82,6 +92,7 @@ func NewEtcdStorer() (*EtcdAgentStorage, error) {
 	}
 	rv.etcd.kAPI = etcd.NewKeysAPI(rv.etcd.client)
 
+	// Check etcd is accessible
 	if err = rv.PingETCD(); err != nil {
 		return nil, err
 	}
