@@ -23,17 +23,16 @@ import (
 )
 
 type AppConfig struct {
-	sync.Mutex                  // extend for ensures atomic writes; protects the following fields
-	configured    bool          // flag whether App configured
+	sync.Mutex                  // ensures atomic writes; protects the following fields
 	UseKubeClient bool          // use k8s TPR (true) or etcd (false) as a data storage
 	EtcdEndpoints string        // endpoints (IPaddress1:PORT1[,IPaddress2:PORT2]) of etcd server
 	                            // when etcd is being used as a data storage
 	EtcdTree      string        // Root of NetChecker server etcd tree
 	EtcdCertFile  string        // SSL certificate file when using HTTPS to connect to etcd
 	EtcdKeyFile   string        // SSL key file when using HTTPS to connect to etcd
-	HttpListen    string        // endpoint (IPaddress:PORT) for REST API handlers
-	PingTimeout   time.Duration // Timeout for ping (to etcd) operations
-	ReportTTL     time.Duration // TTL for Agent report
+	HttpListen    string        // REST API endpoint (IPaddress:PORT) for netchecker server to listen to
+	PingTimeout   time.Duration // etcd ping timeout (sec)
+	ReportTTL     time.Duration // TTL for Agent report data when etcd is in use (sec)
 }
 
 var main_config *AppConfig

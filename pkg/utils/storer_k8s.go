@@ -35,7 +35,7 @@ type k8sAgentStorage struct {
 	ExtensionsClientset ext_client.Clientset
 }
 
-func connect2k8s() (Proxy, ext_client.Clientset, error) {
+func connect2k8s(createTPR bool) (Proxy, ext_client.Clientset, error) {
 	var err error
 	var clientset *kubernetes.Clientset
 
@@ -51,6 +51,10 @@ func connect2k8s() (Proxy, ext_client.Clientset, error) {
 	if err != nil {
 		glog.Error(err)
 		return nil, nil, err
+	}
+
+	if !createTPR {
+		return proxy, nil, err
 	}
 
 	err = ext_client.CreateAgentThirdPartyResource(clientset)
@@ -75,7 +79,7 @@ func NewK8sStorer() (*k8sAgentStorage, error) {
 		NcAgentCache: map[string]ext_v1.AgentSpec{},
 	}
 
-	rv.KubeClient, rv.ExtensionsClientset, err = connect2k8s()
+	rv.KubeClient, rv.ExtensionsClientset, err = connect2k8s(true)
 
 	return rv, err
 }
