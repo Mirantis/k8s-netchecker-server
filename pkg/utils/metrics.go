@@ -132,7 +132,7 @@ func NewAgentMetrics(ai *ext_v1.AgentSpec) AgentMetrics {
 				params.Field(i).Set(reflect.ValueOf(exists))
 			}
 		} else {
-			glog.V(5).Infof("Skipping %v since it's not prometheus metric.", params.Type().Field(i).Name)
+			glog.V(10).Infof("Skipping %v since it's not prometheus metric.", params.Type().Field(i).Name)
 		}
 	}
 
@@ -146,7 +146,7 @@ func tryRegisterCounter(m prometheus.Counter) (prometheus.Counter, bool) {
 		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
 			// A counter for that metric has been registered before.
 			existing := are.ExistingCollector.(prometheus.Counter)
-			glog.V(5).Infof("Counter %v has been registered already.", existing.Desc())
+			glog.V(10).Infof("Counter %v has been registered already.", existing.Desc())
 			return existing, false
 		}
 		// Something else went wrong!
