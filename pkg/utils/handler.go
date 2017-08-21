@@ -134,10 +134,11 @@ func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
 func (h *Handler) CollectAgentsMetrics() {
 	for {
 		time.Sleep(5 * time.Second)
-		for name := range h.Agents.AgentCache() {
+		agentsData := h.Agents.AgentCache()
+		for name := range agentsData {
 			if _, exists := h.Metrics[name]; exists {
-				deltaInIntervals := time.Now().Sub(h.Agents.AgentCache()[name].LastUpdated).Seconds() /
-					float64(h.Agents.AgentCache()[name].ReportInterval)
+				deltaInIntervals := time.Now().Sub(agentsData[name].LastUpdated).Seconds() /
+					float64(agentsData[name].ReportInterval)
 				if int(deltaInIntervals) > (h.Metrics[name].ErrorsFromLastReport + 1) {
 					UpdateAgentBaseMetrics(h.Metrics[name], false, true)
 				}

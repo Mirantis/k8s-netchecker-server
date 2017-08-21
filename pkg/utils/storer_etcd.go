@@ -25,7 +25,6 @@ import (
 	"time"
 
 	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
-	ext_client "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/client"
 
 	etcd "github.com/coreos/etcd/client"
 	"github.com/golang/glog"
@@ -39,11 +38,10 @@ type EtcdConfig struct {
 
 type K8sConnection struct {
 	KubeClient          Proxy
-	ExtensionsClientset ext_client.Clientset
 }
 
 type EtcdAgentStorage struct {
-	sync.Mutex   // extend for ensures atomic writes; protects the following fields
+	sync.Mutex   // ensures atomic writes; protects the following fields
 	config       *AppConfig
 	etcd         EtcdConfig
 	k8s          K8sConnection
@@ -54,16 +52,26 @@ func NewEtcdStorer() (*EtcdAgentStorage, error) {
 	var err error
 
 	cfg := GetOrCreateConfig()
-	glog.Infof("Endpoints '%s' will be used for connect to etcd.", cfg.EtcdEndpoints)
+	glog.Infof("Endpoints '%s' will be used to connect to etcd.", cfg.EtcdEndpoints)
 
 	rv := &EtcdAgentStorage{
 		NcAgentCache: NcAgentCache{},
 		config:       cfg,
 	}
 
-	// setup http/https transport, compatible with self-signed certs
+	// setup http/https transport compatible with self-signed certs
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
+	}
+	if (cfg.EtcdKeyFile != "") && (cfg.EtcdCertFile != "") {
+		cert, err := tls.LoadX509KeyPair(cfg.EtcdCertFile, cfg.EtcdKeyFile)
+		if err != nil {
+			glog.Fatalf("Error loading X509 key pair: %s", err)
+		}
+		tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		}
 	}
 
 	httpsTransport := &http.Transport{
@@ -82,12 +90,13 @@ func NewEtcdStorer() (*EtcdAgentStorage, error) {
 	}
 	rv.etcd.kAPI = etcd.NewKeysAPI(rv.etcd.client)
 
+	// Check etcd is accessible
 	if err = rv.PingETCD(); err != nil {
 		return nil, err
 	}
 
 	// Configure connection to k8s API
-	rv.k8s.KubeClient, rv.k8s.ExtensionsClientset, err = connect2k8s()
+	rv.k8s.KubeClient, _, err = connect2k8s(false)
 
 	return rv, err
 }
@@ -96,13 +105,13 @@ func (s *EtcdAgentStorage) PingETCD() error {
 	var rv error
 	ctx, cancel := context.WithTimeout(context.Background(), s.config.PingTimeout)
 	defer cancel()
-	// set a new key, ignoring it's previous state
+	// set a new key ignoring its previous state
 	_, err := s.etcd.kAPI.Set(ctx, fmt.Sprintf("%s/ping", s.config.EtcdTree), "pong", nil)
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			rv = fmt.Errorf("Ping has no answer more than %d seconds", s.config.PingTimeout)
+			rv = fmt.Errorf("Etcd ping timeout (no answer for %d seconds)", s.config.PingTimeout)
 		} else {
-			rv = fmt.Errorf("Ping to etcd failed: %v", err.Error())
+			rv = fmt.Errorf("Etcd ping failed: %v", err.Error())
 		}
 	}
 	return rv
@@ -138,9 +147,9 @@ func (s *EtcdAgentStorage) createOrUpdateAgentTree(ctx context.Context, dirName 
 		TTL:       s.config.ReportTTL,
 	})
 	if err != nil {
-		glog.Errorf("Updating DIR '%s' failed: %v", dirName, err)
+		glog.Errorf("Directory '%s' update failed: %v", dirName, err)
 	} else {
-		glog.Infof("DIR '%s' %sd successfully", dirName, oper)
+		glog.Infof("Directory '%s' %sd successfully", dirName, oper)
 	}
 }
 
@@ -210,6 +219,7 @@ func (s *EtcdAgentStorage) getAgents() NcAgentCache {
 
 	agentsData = NcAgentCache{}
 	dirName = fmt.Sprintf("%s/agents", s.config.EtcdTree)
+	glog.V(5).Infof("Get agents data from etcd tree '%s'", dirName)
 
 	ctx := context.Background()
 	resp, err := s.etcd.kAPI.Get(ctx, dirName, &etcd.GetOptions{Quorum: true, Recursive: true})
@@ -235,7 +245,7 @@ func (s *EtcdAgentStorage) getAgents() NcAgentCache {
 		}
 		if max_AgentSpec.Uptime > 0 {
 			agentsData[nname] = max_AgentSpec
-			glog.Infof("%s: %#v", nname, last_AgentSpec)
+			glog.V(10).Infof("%s: %#v", nname, last_AgentSpec)
 		}
 	}
 	return agentsData
