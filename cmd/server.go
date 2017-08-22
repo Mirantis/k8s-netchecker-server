@@ -41,6 +41,7 @@ func main() {
 	flag.StringVar(&config.EtcdTree, "etcd-tree", "netchecker", "Root of Etcd tree")
 	flag.StringVar(&config.EtcdKeyFile, "etcd-key", "", "SSL key file when using HTTPS to connect to etcd")
 	flag.StringVar(&config.EtcdCertFile, "etcd-cert", "", "SSL certificate file when using HTTPS to connect to etcd")
+	flag.StringVar(&config.EtcdCAFile, "etcd-ca", "", "SSL CA file when using HTTPS to connect to etcd")
 	flag.Parse()
 	glog.Infof("K8s netchecker. Compiled at: %s", version)
 

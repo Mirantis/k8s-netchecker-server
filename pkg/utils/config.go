@@ -30,6 +30,7 @@ type AppConfig struct {
 	EtcdTree      string        // Root of NetChecker server etcd tree
 	EtcdCertFile  string        // SSL certificate file when using HTTPS to connect to etcd
 	EtcdKeyFile   string        // SSL key file when using HTTPS to connect to etcd
+	EtcdCAFile    string        // SSL CA file when using HTTPS to connect to etcd
 	HttpListen    string        // REST API endpoint (IPaddress:PORT) for netchecker server to listen to
 	PingTimeout   time.Duration // etcd ping timeout (sec)
 	ReportTTL     time.Duration // TTL for Agent report data when etcd is in use (sec)
