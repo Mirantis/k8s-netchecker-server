@@ -79,7 +79,7 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 	}
 
 	h.Metrics[agentName] = NewAgentMetrics(&agentData)
-	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
+	UpdateAgentBaseMetrics(h.Metrics, agentName, true, false)
 	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
 }
 
@@ -140,7 +140,7 @@ func (h *Handler) CollectAgentsMetrics(checkInterval time.Duration, useKubeClien
 					deltaInIntervals := time.Now().Sub(agentsData[name].LastUpdated).Seconds() /
 							float64(agentsData[name].ReportInterval)
 					if int(deltaInIntervals) > (h.Metrics[name].ErrorsFromLastReport + 1) {
-						UpdateAgentBaseMetrics(h.Metrics[name], false, true)
+						UpdateAgentBaseMetrics(h.Metrics, name, false, true)
 					}
 				}
 			}
@@ -154,7 +154,7 @@ func (h *Handler) CollectAgentsMetrics(checkInterval time.Duration, useKubeClien
 			for _, name := range absent {
 				if _, exists := h.Metrics[name]; exists {
 					if h.Metrics[name].ErrorsFromLastReport == 0 {
-						UpdateAgentBaseMetrics(h.Metrics[name], false, true)
+						UpdateAgentBaseMetrics(h.Metrics, name, false, true)
 					}
 				}
 			}
