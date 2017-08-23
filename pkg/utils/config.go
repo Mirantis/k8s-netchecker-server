@@ -34,6 +34,7 @@ type AppConfig struct {
 	HttpListen    string        // REST API endpoint (IPaddress:PORT) for netchecker server to listen to
 	PingTimeout   time.Duration // etcd ping timeout (sec)
 	ReportTTL     time.Duration // TTL for Agent report data when etcd is in use (sec)
+	CheckInterval time.Duration // Interval of checking that agents data is up-to-date
 }
 
 var main_config *AppConfig
