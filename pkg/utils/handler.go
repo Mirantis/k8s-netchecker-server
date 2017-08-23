@@ -23,7 +23,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/negroni"
-	"gerrit/mcp/projectcalico/cni-plugin/k8s"
 )
 
 func NewHandler(useKubeClient bool) (*Handler, error) {
