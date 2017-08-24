@@ -172,15 +172,17 @@ func tryRegisterGaugeVec(m *prometheus.GaugeVec) (*prometheus.GaugeVec, bool) {
 
 // UpdateAgentBaseMetrics function updates basic metrics with reports and
 // error counters
-func UpdateAgentBaseMetrics(am AgentMetrics, report, error bool) {
+func UpdateAgentBaseMetrics(am NcAgentMetrics, name string, report, error bool) {
+	agent := am[name]
 	if report {
-		am.ReportCount.Inc()
-		am.ErrorsFromLastReport = 0
+		agent.ReportCount.Inc()
+		agent.ErrorsFromLastReport = 0
 	}
 	if error {
-		am.ErrorCount.Inc()
-		am.ErrorsFromLastReport += 1
+		agent.ErrorCount.Inc()
+		agent.ErrorsFromLastReport += 1
 	}
+	am[name] = agent
 }
 
 // UpdateAgentProbeMetrics function updates HTTP probe metrics.

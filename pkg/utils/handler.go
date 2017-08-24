@@ -25,19 +25,18 @@ import (
 	"github.com/urfave/negroni"
 )
 
-func NewHandler() (*Handler, error) {
-	appConfig := GetOrCreateConfig()
-
+func NewHandler(useKubeClient bool) (*Handler, error) {
 	h := &Handler{
 		Metrics: NcAgentMetrics{},
 	}
 
 	var err error
 
-	if appConfig.UseKubeClient {
+	if useKubeClient {
+		// use k8s TPR as a persistent storage for agents data
 		h.Agents, err = NewK8sStorer()
 	} else {
-		// use etcd for store states instead k8s 3d-part
+		// use etcd as a persistent storage for agents data
 		h.Agents, err = NewEtcdStorer()
 	}
 
@@ -80,7 +79,7 @@ func (h *Handler) UpdateAgents(rw http.ResponseWriter, r *http.Request, rp httpr
 	}
 
 	h.Metrics[agentName] = NewAgentMetrics(&agentData)
-	UpdateAgentBaseMetrics(h.Metrics[agentName], true, false)
+	UpdateAgentBaseMetrics(h.Metrics, agentName, true, false)
 	UpdateAgentProbeMetrics(agentData, h.Metrics[agentName])
 }
 
@@ -131,16 +130,32 @@ func (h *Handler) CleanCache(handle httprouter.Handle) httprouter.Handle {
 	}
 }
 
-func (h *Handler) CollectAgentsMetrics() {
+func (h *Handler) CollectAgentsMetrics(checkInterval time.Duration, useKubeClient bool) {
 	for {
-		time.Sleep(5 * time.Second)
-		agentsData := h.Agents.AgentCache()
-		for name := range agentsData {
-			if _, exists := h.Metrics[name]; exists {
-				deltaInIntervals := time.Now().Sub(agentsData[name].LastUpdated).Seconds() /
-					float64(agentsData[name].ReportInterval)
-				if int(deltaInIntervals) > (h.Metrics[name].ErrorsFromLastReport + 1) {
-					UpdateAgentBaseMetrics(h.Metrics[name], false, true)
+		time.Sleep(checkInterval)
+		if useKubeClient {
+			agentsData := h.Agents.AgentCache()
+			for name := range agentsData {
+				if _, exists := h.Metrics[name]; exists {
+					deltaInIntervals := time.Now().Sub(agentsData[name].LastUpdated).Seconds() /
+							float64(agentsData[name].ReportInterval)
+					if int(deltaInIntervals) > (h.Metrics[name].ErrorsFromLastReport + 1) {
+						UpdateAgentBaseMetrics(h.Metrics, name, false, true)
+					}
+				}
+			}
+		} else {
+			absent, _, err := h.Agents.CheckAgents()
+			if err != nil {
+				message := fmt.Sprintf(
+					"Metrics update: error checking the agents: %v", err)
+				glog.Error(message)
+			}
+			for _, name := range absent {
+				if _, exists := h.Metrics[name]; exists {
+					if h.Metrics[name].ErrorsFromLastReport == 0 {
+						UpdateAgentBaseMetrics(h.Metrics, name, false, true)
+					}
 				}
 			}
 		}

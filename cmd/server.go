@@ -27,8 +27,9 @@ var version string
 
 func main() {
 	var (
-		repTTL      int
-		pingTimeout int
+		repTTL        int
+		pingTimeout   int
+		checkInterval int
 	)
 
 	config := utils.GetOrCreateConfig()
@@ -42,20 +43,22 @@ func main() {
 	flag.StringVar(&config.EtcdKeyFile, "etcd-key", "", "SSL key file when using HTTPS to connect to etcd")
 	flag.StringVar(&config.EtcdCertFile, "etcd-cert", "", "SSL certificate file when using HTTPS to connect to etcd")
 	flag.StringVar(&config.EtcdCAFile, "etcd-ca", "", "SSL CA file when using HTTPS to connect to etcd")
+	flag.IntVar(&checkInterval, "check-interval", 10, "Interval of checking that agents data is up-to-date (sec)")
 	flag.Parse()
 	glog.Infof("K8s netchecker. Compiled at: %s", version)
 
 	config.ReportTTL = time.Duration(repTTL) * time.Second
 	config.PingTimeout = time.Duration(pingTimeout) * time.Second
+	config.CheckInterval = time.Duration(checkInterval) * time.Second
 
 	glog.V(5).Infof("Start listening on %v", config.HttpListen)
 
-	handler, err := utils.NewHandler()
+	handler, err := utils.NewHandler(config.UseKubeClient)
 	if err != nil {
 		glog.Errorf("Error while setting up the handler. Details: %v", err)
 		panic(err.Error())
 	}
 
-	go handler.CollectAgentsMetrics()
+	go handler.CollectAgentsMetrics(config.CheckInterval, config.UseKubeClient)
 	glog.Fatal(http.ListenAndServe(config.HttpListen, handler.HTTPHandler))
 }
