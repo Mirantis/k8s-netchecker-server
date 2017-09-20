@@ -40,10 +40,10 @@ AGENT_IMAGE_TAG=${AGENT_IMAGE_TAG:-$IMAGE_TAG}
 SERVER_PORT=${SERVER_PORT:-8081}
 
 if [ -z ${USE_ETCD_ENDPOINT} ] ; then
-  # use 3rd party resource API for store agents state
+  # use 3rd party resource API to store agents state
   SERVER_ENV_TAIL="-kubeproxyinit"
 else
-  # use ETCD for store agent reports
+  # use ETCD to store agent reports
   ETCD_ENDPOINT=${ETCD_ENDPOINT:-"https://localhost:2379"}
   EEPS=$(etcdctl --endpoints=${ETCD_ENDPOINT} member list | awk '{print $4}' | awk -F'=' '{print $2}' | paste -sd "," -)
   SERVER_ENV_TAIL="-etcd-endpoints=${EEPS}"
