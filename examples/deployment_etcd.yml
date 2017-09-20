@@ -30,4 +30,14 @@ spec:
             - "-etcd-key=/var/lib/etcd/etcd-client.key"
             - "-etcd-cert=/var/lib/etcd/etcd-client.pem"
             - "-etcd-ca=/var/lib/etcd/ca.pem"
+          # optional. to provide etcd certs data if it is in the host file system
+          volumeMounts:
+          - mountPath: /var/lib/etcd/
+            name: etcd-certs
+            readOnly: true
+      # optional. to provide etcd certs data if it is in the host file system
+      volumes:
+      - hostPath:
+          path: /var/lib/etcd
+        name: etcd-certs
 
