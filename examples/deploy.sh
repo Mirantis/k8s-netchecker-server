@@ -40,10 +40,10 @@ AGENT_IMAGE_TAG=${AGENT_IMAGE_TAG:-$IMAGE_TAG}
 SERVER_PORT=${SERVER_PORT:-8081}
 
 if [ -z ${USE_ETCD_ENDPOINT} ] ; then
-  # use 3rd party resource API for store agents state
+  # use 3rd party resources (TPR) API to store agent reports
   SERVER_ENV_TAIL="-kubeproxyinit"
 else
-  # use ETCD for store agent reports
+  # use ETCD to store agent reports
   ETCD_ENDPOINT=${ETCD_ENDPOINT:-"https://localhost:2379"}
   EEPS=$(etcdctl --endpoints=${ETCD_ENDPOINT} member list | awk '{print $4}' | awk -F'=' '{print $2}' | paste -sd "," -)
   SERVER_ENV_TAIL="-etcd-endpoints=${EEPS}"
@@ -57,7 +57,7 @@ fi
 # check there are nodes in the cluster
 kubectl get nodes
 
-echo "Installing netchecker server"
+echo "Deploying netchecker server and agents"
 cat << EOF > "${KUBE_DIR}"/netchecker-server-dep.yml
 apiVersion: apps/v1beta1
 kind: Deployment
@@ -198,8 +198,10 @@ echo "DONE"
 
 if [ "${PURGE}" != "true" ]; then
   echo "Use the following commands to "
-  echo "- check agents responses:"
+  echo "- get latest agents reports:"
   echo "  curl -s -X GET 'http://localhost:${NODE_PORT}/api/v1/agents/' | python -mjson.tool"
   echo "- check connectivity with agents:"
   echo "  curl -X GET 'http://localhost:${NODE_PORT}/api/v1/connectivity_check'"
+  echo "- get agents metrics:"
+  echo "  curl -X GET 'http://localhost:${NODE_PORT}/metrics'"
 fi

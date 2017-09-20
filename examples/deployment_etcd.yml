@@ -1,0 +1,43 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: netchecker-server
+spec:
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+      name: netchecker-server
+      labels:
+        app: netchecker-server
+      namespace: default
+    spec:
+      containers:
+        - name: netchecker-server
+          image: mirantis/k8s-netchecker-server:stable
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          args:
+            - "-v=5"
+            - "-logtostderr"
+            - "-kubeproxyinit=false"
+            - "-endpoint=0.0.0.0:8081"
+            - "-report-ttl=180"
+            - "-etcd-endpoints=https://172.0.10.2:4009,https://172.0.10.3:4009"
+            - "-etcd-key=/var/lib/etcd/etcd-client.key"
+            - "-etcd-cert=/var/lib/etcd/etcd-client.pem"
+            - "-etcd-ca=/var/lib/etcd/ca.pem"
+          # optional. to provide etcd certs data if it is in the host file system
+          volumeMounts:
+          - mountPath: /var/lib/etcd/
+            name: etcd-certs
+            readOnly: true
+      # optional. to provide etcd certs data if it is in the host file system
+      volumes:
+      - hostPath:
+          path: /var/lib/etcd
+        name: etcd-certs
+
