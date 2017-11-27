@@ -16,26 +16,29 @@ package client
 
 import (
 	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-// CreateAgentThirdPartyResource is a function to initialize schema for 3rd-party resource
-func CreateAgentThirdPartyResource(clientset kubernetes.Interface) error {
-	agent := &v1beta1.ThirdPartyResource{
+// CreateAgentCustomResourceDefinition is a function to initialize schema for custom reource
+func CreateAgentCustomResourceDefinition(clientset apiextensionsclient.Interface) (*apiextensionsv1beta1.CustomResourceDefinition, error) {
+	agent := &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name: "agent." + ext_v1.GroupName,
 		},
-		Versions: []v1beta1.APIVersion{
-			{Name: ext_v1.SchemeGroupVersion.Version},
+		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+			Group:   ext_v1.GroupName,
+			Version: ext_v1.SchemeGroupVersion.Version,
+			Scope:   apiextensionsv1beta1.NamespaceScoped,
+			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+				Plural: ext_v1.AgentResourcePlural,
+				Kind:   reflect.TypeOf(ext_v1.Agent{}).Name(),
+			},
 		},
-		Description: "An Agent ThirdPartyResource",
 	}
-
-	_, err := clientset.ExtensionsV1beta1().
-		ThirdPartyResources().
-		Create(agent)
-
+	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 	return err
 }

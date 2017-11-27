@@ -57,7 +57,7 @@ func connect2k8s(createTPR bool) (Proxy, ext_client.Clientset, error) {
 		return proxy, nil, err
 	}
 
-	err = ext_client.CreateAgentThirdPartyResource(clientset)
+	err = ext_client.CreateAgentCustomResourceDefinition(clientset)
 	if err != nil && !api_errors.IsAlreadyExists(err) {
 		glog.Error(err)
 		return nil, nil, err
