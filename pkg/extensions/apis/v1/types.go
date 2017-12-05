@@ -21,7 +21,7 @@ import (
 )
 
 // AgentResourcePlural is a constant for plural form naming
-const AgentResourcePlural = "agents"
+const AgentResourcePlural = "agent"
 
 // AgentSpec is a payload to keep Agent info
 type AgentSpec struct {

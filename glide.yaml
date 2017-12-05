@@ -1,44 +1,25 @@
 package: github.com/Mirantis/k8s-netchecker-server
 import:
 - package: github.com/golang/glog
-  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - package: github.com/julienschmidt/httprouter
   version: 975b5c4c7c21c0e3d2764200bf2aa8e34657ae6e
-- package: k8s.io/client-go
-  version: 117378eef311e1a8ae898ddbde22c4df522079f0
-  subpackages:
-  - kubernetes
-  - pkg/api
-  - rest
-  - tools/clientcmd
-- package: github.com/onsi/ginkgo
-  version: bb93381d543b0e5725244abe752214a110791d01
-- package: github.com/onsi/gomega
-  version: d59fa0ac68bb5dd932ee8d24eed631cdd519efc3
-- package: k8s.io/apiserver
-  version: release-1.6
 - package: k8s.io/kubernetes
-  version: v1.6.4
-  subpackages:
-  - pkg/client
-  - pkg/kubelet
-- package: k8s.io/apimachinery
-  version: 98c470feb44de033f26efb4af98a19f804ffffdc
-  subpackages:
-  - pkg/api
-  - pkg/apis/meta/v1
-  - pkg/labels
-  - pkg/runtime
-  - pkg/selection
-  - pkg/util
-  - pkg/watch
+  version: v1.7.0
+- package: k8s.io/client-go
+  version: 4cbb4d746a6a36cf99d6cd4f1b69a6907f49318a
+- package: github.com/onsi/ginkgo
+- package: k8s.io/apiextensions-apiserver
+  version: fcd622fe88a4a6efcb5aea9e94ee87324ac1b036
+- package: github.com/onsi/gomega
+- package: k8s.io/api
+  version: 4fe9229aaa9d704f8a2a21cdcd50de2bbb6e1b57
 - package: github.com/urfave/negroni
   version: 3019daf414cfd2c51de68c3a535707c0de6e3d83
 - package: github.com/prometheus/client_golang
-  version: v0.8.0
+  version: e7e903064f5e9eb5da98208bae10b475d4db0f8c
   subpackages:
   - prometheus/promhttp
 - package: github.com/coreos/etcd
-  version: ^3.2.5
+  version: 20490caaf0dcd96bb4a95e40625559def8ef5b04
   subpackages:
   - client

@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
-	api_v1 "k8s.io/client-go/pkg/api/v1"
+	api_v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 
 	ext_v1 "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/apis/v1"

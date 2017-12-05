@@ -26,6 +26,7 @@ import (
 	ext_client "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/client"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -48,6 +49,7 @@ func connect2k8s(createTPR bool) (Proxy, ext_client.Clientset, error) {
 	}
 
 	clientset, err = proxy.SetupClientSet(config)
+	apiextensionsclientset, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
 		glog.Error(err)
 		return nil, nil, err
@@ -57,7 +59,7 @@ func connect2k8s(createTPR bool) (Proxy, ext_client.Clientset, error) {
 		return proxy, nil, err
 	}
 
-	err = ext_client.CreateAgentCustomResourceDefinition(clientset)
+	err = ext_client.CreateAgentCustomResourceDefinition(apiextensionsclientset)
 	if err != nil && !api_errors.IsAlreadyExists(err) {
 		glog.Error(err)
 		return nil, nil, err
