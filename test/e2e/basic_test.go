@@ -29,6 +29,7 @@ import (
 
 	"io/ioutil"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	rbac "k8s.io/client-go/pkg/apis/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -39,6 +40,8 @@ import (
 var _ = ginkgo.Describe("Basic", func() {
 	var clientset *kubernetes.Clientset
 	var ns *v1.Namespace
+	var cr *rbac.ClusterRole
+	var crb *rbac.ClusterRoleBinding
 	var serverPort int = 8989
 
 	ginkgo.BeforeEach(func() {
@@ -52,6 +55,19 @@ var _ = ginkgo.Describe("Basic", func() {
 			},
 			Status: v1.NamespaceStatus{},
 		}
+		cr_body := newClusterRole(
+			"netchecker-server",
+			[]rbac.PolicyRule{
+				{Verbs: []string{"*"}, APIGroups: []string{"apiextensions.k8s.io"}, Resources: []string{"customresourcedefinitions"}},
+				{Verbs: []string{"*"}, APIGroups: []string{"network-checker.ext"}, Resources: []string{"agents"}},
+				{Verbs: []string{"get", "list"}, APIGroups: []string{""}, Resources: []string{"pods"}},
+			},
+		)
+		cr, err = clientset.Rbac().ClusterRoles().Create(cr_body)
+		crb_body := newClusterRoleBinding(
+			"netchecker", "rbac.authorization.k8s.io", "ClusterRole",
+			"netchecker-server", "rbac.authorization.k8s.io", "Group", "system:serviceaccounts")
+		crb, err = clientset.Rbac().ClusterRoleBindings().Create(crb_body)
 		ns, err = clientset.Namespaces().Create(namespaceObj)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
@@ -65,6 +81,8 @@ var _ = ginkgo.Describe("Basic", func() {
 			clientset.Core().Pods(pod.Namespace).Delete(pod.Name, &meta_v1.DeleteOptions{})
 		}
 		clientset.Namespaces().Delete(ns.Name, &meta_v1.DeleteOptions{})
+		clientset.Rbac().ClusterRoleBindings().Delete(crb.Name, &meta_v1.DeleteOptions{})
+		clientset.Rbac().ClusterRoles().Delete(cr.Name, &meta_v1.DeleteOptions{})
 	})
 
 	ginkgo.It("Connectivity check should pass", func() {
@@ -211,6 +229,31 @@ func newService(serviceName string, labels map[string]string, ports []v1.Service
 			Type:        v1.ServiceTypeNodePort,
 			Ports:       ports,
 			ExternalIPs: externalIPs,
+		},
+	}
+}
+
+func newClusterRole(roleName string, rules []rbac.PolicyRule) *rbac.ClusterRole {
+	return &rbac.ClusterRole{
+		ObjectMeta: meta_v1.ObjectMeta{Name: roleName},
+		Rules: rules,
+	}
+}
+
+func newClusterRoleBinding(bindName string, roleApigroup string, roleKind string, roleName string, subjApigroup string, subjKind string, subjName string) *rbac.ClusterRoleBinding {
+	return &rbac.ClusterRoleBinding{
+		ObjectMeta: meta_v1.ObjectMeta{Name: bindName},
+		RoleRef: rbac.RoleRef{
+			APIGroup:	roleApigroup,
+			Kind:		roleKind,
+			Name:		roleName,
+		},
+		Subjects: []rbac.Subject{
+			{
+				APIGroup:	subjApigroup,
+				Kind:		subjKind,
+				Name:		subjName,
+			},
 		},
 	}
 }
