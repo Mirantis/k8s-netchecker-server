@@ -36,7 +36,7 @@ type k8sAgentStorage struct {
 	ExtensionsClientset ext_client.Clientset
 }
 
-func connect2k8s(createTPR bool) (Proxy, ext_client.Clientset, error) {
+func connect2k8s(createCRD bool) (Proxy, ext_client.Clientset, error) {
 	var err error
 	var clientset *kubernetes.Clientset
 
@@ -49,13 +49,17 @@ func connect2k8s(createTPR bool) (Proxy, ext_client.Clientset, error) {
 	}
 
 	clientset, err = proxy.SetupClientSet(config)
+	if err != nil {
+		glog.Error(err)
+		return nil, nil, err
+	}
 	apiextensionsclientset, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
 		glog.Error(err)
 		return nil, nil, err
 	}
 
-	if !createTPR {
+	if !createCRD {
 		return proxy, nil, err
 	}
 
