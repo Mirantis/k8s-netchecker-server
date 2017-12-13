@@ -30,8 +30,8 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+	"k8s.io/client-go/tools/remotecommand"
+	remotecommandserver "k8s.io/apimachinery/pkg/util/remotecommand"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -127,7 +127,7 @@ func execute(method string, url *url.URL, config *rest.Config, stdin io.Reader, 
 	if err != nil {
 		return err
 	}
-	upgrader := spdy.NewRoundTripper(tlsConfig)
+	upgrader := spdy.NewRoundTripper(tlsConfig, true)
 	exec, err := remotecommand.NewStreamExecutor(upgrader, nil, method, url)
 	if err != nil {
 		return err

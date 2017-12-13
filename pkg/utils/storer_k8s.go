@@ -26,6 +26,7 @@ import (
 	ext_client "github.com/Mirantis/k8s-netchecker-server/pkg/extensions/client"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -35,7 +36,7 @@ type k8sAgentStorage struct {
 	ExtensionsClientset ext_client.Clientset
 }
 
-func connect2k8s(createTPR bool) (Proxy, ext_client.Clientset, error) {
+func connect2k8s(createCRD bool) (Proxy, ext_client.Clientset, error) {
 	var err error
 	var clientset *kubernetes.Clientset
 
@@ -52,12 +53,17 @@ func connect2k8s(createTPR bool) (Proxy, ext_client.Clientset, error) {
 		glog.Error(err)
 		return nil, nil, err
 	}
+	apiextensionsclientset, err := apiextensionsclient.NewForConfig(config)
+	if err != nil {
+		glog.Error(err)
+		return nil, nil, err
+	}
 
-	if !createTPR {
+	if !createCRD {
 		return proxy, nil, err
 	}
 
-	err = ext_client.CreateAgentThirdPartyResource(clientset)
+	err = ext_client.CreateAgentCustomResourceDefinition(apiextensionsclientset)
 	if err != nil && !api_errors.IsAlreadyExists(err) {
 		glog.Error(err)
 		return nil, nil, err
