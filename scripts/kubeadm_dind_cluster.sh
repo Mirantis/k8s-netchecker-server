@@ -22,8 +22,8 @@ set -o nounset
 NUM_NODES=${NUM_NODES:-3}
 KUBEADM_SCRIPT_URL=${KUBEADM_SCRIPT_URL:-https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster}
 # kubeadm-dind-cluster supports k8s versions:
-# "v1.4", "v1.5" and "v1.6".
-DIND_CLUSTER_VERSION=${DIND_CLUSTER_VERSION:-v1.7}
+# "v1.6", "v1.7" and "v1.8".
+DIND_CLUSTER_VERSION=${DIND_CLUSTER_VERSION:-v1.8}
 
 
 function kubeadm-dind-cluster {
