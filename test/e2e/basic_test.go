@@ -117,7 +117,7 @@ var _ = ginkgo.Describe("Basic", func() {
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		// ensure agents are up and they have sent their reports to the server
-		time.Sleep(15 * time.Second)
+		time.Sleep(45 * time.Second)
 
 		services := getServices(clientset, ns)
 		ncService := false
