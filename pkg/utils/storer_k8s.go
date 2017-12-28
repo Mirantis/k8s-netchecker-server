@@ -103,7 +103,8 @@ func (h *k8sAgentStorage) UpdateAgents(rw http.ResponseWriter, r *http.Request, 
 
 	agentName := rp.ByName("name")
 
-	_, err = h.ExtensionsClientset.Agents().Get(agentName)
+	// Try to get current agent
+	curAgent, err := h.ExtensionsClientset.Agents().Get(agentName)
 
 	if err != nil {
 		glog.Error(err)
@@ -116,11 +117,14 @@ func (h *k8sAgentStorage) UpdateAgents(rw http.ResponseWriter, r *http.Request, 
 		Spec: agentData,
 	}
 
+	// If agent does not exist, let's create it.
+	// Otherwise we need to update it using proper ResourceVersion
 	if api_errors.IsNotFound(err) {
 		h.CleanCacheOnDemand(nil)
 		agent, err = h.ExtensionsClientset.Agents().Create(agent)
 		glog.Infoln("Created agent", agentName, err)
 	} else {
+		agent.ObjectMeta.ResourceVersion = curAgent.ObjectMeta.ResourceVersion
 		agent, err = h.ExtensionsClientset.Agents().Update(agent)
 		glog.Infoln("Updated agent", agentName, err)
 	}
