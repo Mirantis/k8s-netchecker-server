@@ -6,6 +6,7 @@ metadata:
     app: {{ .Values.app.name }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
 spec:
+  serviceAccountName: {{ .Values.rbac.serviceaccount }}
   containers:
     - name: {{ .Values.container.name }}
       image: {{ .Values.image.repository }}:{{ .Values.image.tag }}

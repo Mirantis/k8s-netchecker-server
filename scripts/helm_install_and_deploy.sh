@@ -27,6 +27,8 @@ HELM_DEBUG=${HELM_DEBUG:-"--debug"}
 NETCHECKER_REPO=${NETCHECKER_REPO:-}
 KUBECTL_DIR="${KUBECTL_DIR:-${HOME}/.kubeadm-dind-cluster}"
 PATH="${KUBECTL_DIR}:${PATH}"
+NS=${NS:-netchecker}
+REAL_NS="--namespace=${1:-$NS}"
 
 
 function wait-for-tiller-pod-ready() {
@@ -88,13 +90,13 @@ function lint-helm {
 function deploy-helm {
   if [ "${NETCHECKER_REPO}" == "k8s-netchecker-server" ]; then
     pushd "../${NETCHECKER_REPO}" &> /dev/null
-    helm "${HELM_DEBUG}" install ./"${HELM_SERVER_PATH}"/
+    helm "${HELM_DEBUG}" install ${REAL_NS} ./"${HELM_SERVER_PATH}"/
     popd &> /dev/null
-    helm "${HELM_DEBUG}" install ./"${HELM_AGENT_PATH}"/
+    helm "${HELM_DEBUG}" install ${REAL_NS} ./"${HELM_AGENT_PATH}"/
   else
-    helm "${HELM_DEBUG}" install ./"${HELM_SERVER_PATH}"/
+    helm "${HELM_DEBUG}" install ${REAL_NS} ./"${HELM_SERVER_PATH}"/
     pushd "../${NETCHECKER_REPO}" &> /dev/null
-    helm "${HELM_DEBUG}" install ./"${HELM_AGENT_PATH}"/
+    helm "${HELM_DEBUG}" install ${REAL_NS} ./"${HELM_AGENT_PATH}"/
     popd &> /dev/null
   fi
   helm "${HELM_DEBUG}" list

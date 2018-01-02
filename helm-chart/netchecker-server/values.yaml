@@ -22,3 +22,8 @@ service:
   externalPort: 8081
   internalPort: 8081
   nodePort: 31081
+
+rbac:
+  serviceaccount: nechecker-operator
+  clusterrole: nechecker-operator
+  clusterrolebinding: nechecker-operator
